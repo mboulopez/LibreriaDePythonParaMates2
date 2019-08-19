@@ -1,5 +1,20 @@
 # coding=utf8
 
+# Copyright (C) 2019  Marcor Bujosa
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+ 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/
+
 from fractions import Fraction
 
 def html(TeX):
@@ -11,8 +26,6 @@ def latex(a):
          return str(a)
      else:
          return a.latex()
-
-
 def _repr_html_(self): 
     return html(self.latex())
 
@@ -23,9 +36,7 @@ def latex_fraction(self):
          return "\\frac{"+repr(self.numerator)+"}{"+repr(self.denominator)+"}"     
 
 setattr(Fraction, '_repr_html_', _repr_html_)
-
-setattr(Fraction, 'latex', latex_fraction)
-
+setattr(Fraction, 'latex',        latex_fraction)
 def inverso(x):
     if x==1 or x == -1:
         return x
@@ -35,29 +46,22 @@ def inverso(x):
              return y.numerator
         else:
              return y
-
 class Vector:
     def __init__(self, sis, rpr='columna'):
         """ Inicializa un vector a partir de distintos tipos de datos:
-
         1) De una lista o tupla
         >>> Vector([1,2,3])
 
         Vector([1,2,3])
-
         2) De otro vector (realiza una copia)
         """        
-
     
         if isinstance(sis, (list,tuple)):
             self.lista  =  list(sis)
-        
         elif isinstance(sis, Vector):
-            self.lista = sis.lista
-                
+            self.lista = sis.lista        
         else:
             raise ValueError('¡el argumento: debe ser una lista, tupla o Vector')
-
 
         self.rpr  =  rpr
         self.n    =  len (self.lista)
@@ -410,15 +414,38 @@ class Matrix:
                '\\end{bmatrix}' 
 
 class BlockMatrix:
-    def __init__(self, lista):
+    def __init__(self, sis):
         """ Inicializa una matriz por bloques usando una lista de listas de matrices.
         """        
-        self.lista = lista
-        self.m     = len(lista)
-        self.n     = len(lista[0])
-        self.lm    = [fila[0].m for fila in lista] 
-        self.ln    = [c.n for c in lista[0]]
+        self.lista = list(sis)
+        self.m     = len(sis)
+        self.n     = len(sis[0])
+        self.lm    = [fila[0].m for fila in sis] 
+        self.ln    = [c.n for c in sis[0]]
         
+    def __or__(self,j):
+        """ Reparticiona por columna una matriz por cajas """
+        if isinstance(j,set):
+            if self.n == 1:
+                return BlockMatrix([ [ self.lista[i][0]|a  \
+                                        for a in particion(j,self.lista[0][0].n)] \
+                                        for i in range(self.m) ])
+                                        
+            elif self.n > 1: 
+                 return (key(self.lm) | Matrix(self)) | j
+
+    def __ror__(self,i):
+        """ Reparticiona por filas una matriz por cajas """
+        if isinstance(i,set):
+            if self.m == 1:
+                return BlockMatrix([[ a|self.lista[0][j]  \
+                                       for j in range(self.n) ] \
+                                       for a in particion(i,self.lista[0][0].m)])
+                                       
+            elif self.m > 1: 
+                return i | (Matrix(self) | key(self.ln))
+
+
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'BlockMatrix(' + repr(self.lista) + ')'
@@ -452,29 +479,6 @@ class BlockMatrix:
               '\\\\' + \
               '\\end{array}' + \
               '\\right]'
-
-    def __or__(self,j):
-        """ Reparticiona por columna una matriz por cajas """
-        if isinstance(j,set):
-            if self.n == 1:
-                return BlockMatrix([ [ self.lista[i][0]|a  \
-                                        for a in particion(j,self.lista[0][0].n)] \
-                                        for i in range(self.m) ])
-                                        
-            elif self.n > 1: 
-                 return (key(self.lm) | Matrix(self)) | j
-
-    def __ror__(self,i):
-        """ Reparticiona por filas una matriz por cajas """
-        if isinstance(i,set):
-            if self.m == 1:
-                return BlockMatrix([[ a|self.lista[0][j]  \
-                                       for j in range(self.n) ] \
-                                       for a in particion(i,self.lista[0][0].m)])
-                                       
-            elif self.m > 1: 
-                return i | (Matrix(self) | key(self.ln))
-
 
 def particion(s,n):
     """ genera la lista de particionamiento a partir de un conjunto y un número
