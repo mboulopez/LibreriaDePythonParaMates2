@@ -37,6 +37,7 @@ def latex_fraction(self):
 
 setattr(Fraction, '_repr_html_', _repr_html_)
 setattr(Fraction, 'latex',        latex_fraction)
+
 def inverso(x):
     if x==1 or x == -1:
         return x
@@ -46,6 +47,7 @@ def inverso(x):
              return y.numerator
         else:
              return y
+
 class Vector:
     def __init__(self, sis, rpr='columna'):
         """ Inicializa un vector a partir de distintos tipos de datos:
@@ -143,8 +145,8 @@ class Vector:
             else:
                 print("error en producto: Vector y Matrix incompatibles")
 
-    """a==b es True si a.lista es igual que b.lista, y False en caso contrario"""
     def __eq__(self, other):
+        """a==b es True si a.lista es igual que b.lista. False en caso contrario"""
         return self.lista == other.lista
     def __repr__(self):
         """ Muestra el vector en su representación python """
@@ -164,7 +166,6 @@ class Vector:
             return '\\begin{pmatrix}' + \
                    '\\\\'.join([latex(self|i) for i in range(1,self.n+1)]) + \
                    '\\end{pmatrix}'
-
 class Matrix:
     def __init__(self, sis):
         """ Inicializa una matriz a partir de distintos tipos de datos:
@@ -357,6 +358,7 @@ class Matrix:
                 print("error en producto: matrices incompatibles")
 
     def __eq__(self, other):
+        """A==B es True si A.lista es igual que B.lista. False en caso contrario"""
         return self.lista == other.lista
     def __and__(self,t):
         """ Aplica una o una secuencia de transformaciones elementales por columnas: 
@@ -367,8 +369,8 @@ class Matrix:
         """
         if isinstance(t.t,set) and len(t.t) == 2:
             self.lista = Matrix( [(self|max(t.t)) if k==min(t.t) else \
-                                  (self|min(t.t)) if k==max(t.t) else \
-                                  (self|k) for k in range(1,self.n+1)]).lista
+                                      (self|min(t.t)) if k==max(t.t) else \
+                                      (self|k) for k in range(1,self.n+1)]).lista
 
         elif isinstance(t.t,tuple) and len(t.t) == 2:
              self.lista = Matrix([ t.t[1]*(self|k) if k==t.t[0] else (self|k) \
@@ -410,9 +412,32 @@ class Matrix:
     def latex(self):
         """ Construye el comando LaTeX """
         return '\\begin{bmatrix}' + \
-               '\\\\'.join(['&'.join([latex(i|self|j) for j in range(1,self.n+1) ]) \
-                                                      for i in range(1,self.m+1) ]) + \
+                '\\\\'.join(['&'.join([latex(i|self|j) for j in range(1,self.n+1) ]) \
+                                                       for i in range(1,self.m+1) ]) + \
                '\\end{bmatrix}' 
+class T:
+    def __init__(self, t):
+        """ Inicializa una transformación elemental """        
+        self.t = t
+
+    def __and__(self,t):
+        """ Crea una trasformación composición de dos
+        >>> T((1,2)) & T({2,4})
+
+        T([(1,2), {2,4}])
+
+        O aplica la transformación sobre una matriz A
+        >>> A & T({1,2})    (intercambia las dos primeras columnas de A)
+        """        
+        def CreaLista(a):
+            """Transforma una una tupla en una lista que contiene la tupla"""
+            return (a if isinstance(a,list) else [a])
+
+        if isinstance(t,T):
+            return T(CreaLista(self.t) + CreaLista(t.t))
+
+        if isinstance(t,Matrix):
+            return t.__rand__(self)
 
 class BlockMatrix:
     def __init__(self, sis):
@@ -423,7 +448,7 @@ class BlockMatrix:
         self.n     = len(sis[0])
         self.lm    = [fila[0].m for fila in sis] 
         self.ln    = [c.n for c in sis[0]]
-        
+
     def __or__(self,j):
         """ Reparticiona por columna una matriz por cajas """
         if isinstance(j,set):
@@ -435,26 +460,26 @@ class BlockMatrix:
             elif self.n > 1: 
                  return (key(self.lm) | Matrix(self)) | j
 
-    def __ror__(self,i):
-        """ Reparticiona por filas una matriz por cajas """
-        if isinstance(i,set):
-            if self.m == 1:
-                return BlockMatrix([[ a|self.lista[0][j]  \
-                                       for j in range(self.n) ] \
-                                       for a in particion(i,self.lista[0][0].m)])
-                                       
-            elif self.m > 1: 
-                return i | (Matrix(self) | key(self.ln))
+        def __ror__(self,i):
+            """ Reparticiona por filas una matriz por cajas """
+            if isinstance(i,set):
+                if self.m == 1:
+                    return BlockMatrix([[ a|self.lista[0][j]  \
+                                           for j in range(self.n) ] \
+                                           for a in particion(i,self.lista[0][0].m)])
+                                           
+                elif self.m > 1: 
+                    return i | (Matrix(self) | key(self.ln))
 
 
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'BlockMatrix(' + repr(self.lista) + ')'
-    
+
     def _repr_html_(self):
         """ Construye la representación para el  entorno jupyter notebook """
         return html(self.latex())
-    
+
     def latex(self):
         """ Escribe el código de LaTeX """
         if self.m == self.n == 1:       
@@ -481,6 +506,8 @@ class BlockMatrix:
               '\\end{array}' + \
               '\\right]'
 
+
+
 def particion(s,n):
     """ genera la lista de particionamiento a partir de un conjunto y un número
     >>> particion({1,3,5},7)
@@ -499,6 +526,7 @@ def key(L):
     """
     return set([ sum(L[0:i]) for i in range(1,len(L)+1) ])   
 
+
 class V0(Vector):
     def __init__(self, n ,rpr = 'columna'):
         """ Inicializa el vector nulo de n componentes"""
@@ -515,13 +543,6 @@ class M0(Matrix):
         super(self.__class__ ,self).__init__( \
                       [[0 for i in range(n)] for j in range(m)])
 
-class e(Vector):
-
-    def __init__(self, i,n ,rpr = 'columna'):
-        """ Inicializa el vector e_i  de tamaño n """
-
-        super(self.__class__ ,self).__init__([((i-1)==k)*1 for k in range(n)],rpr)
-
 class I(Matrix):
 
     def __init__(self, n):
@@ -530,29 +551,13 @@ class I(Matrix):
         super(self.__class__ ,self).__init__(\
                       [[(i==j)*1 for i in range(n)] for j in range(n)])
 
-class T:
-    def __init__(self, t):
-        """ Inicializa una transformación elemental """        
-        self.t = t
+class e(Vector):
 
-    def __and__(self,t):
-        """ Crea una trasformación composición de dos
-        >>> T((1,2)) & T({2,4})
+    def __init__(self, i,n ,rpr = 'columna'):
+        """ Inicializa el vector e_i  de tamaño n """
 
-        T([(1,2), {2,4}])
+        super(self.__class__ ,self).__init__([((i-1)==k)*1 for k in range(n)],rpr)
 
-        O aplica la transformación sobre una matriz A
-        >>> A & T({1,2})    (intercambia las dos primeras columnas de A)
-        """        
-        def CreaLista(a):
-            """Transforma una una tupla en una lista que contiene la tupla"""
-            return (a if isinstance(a,list) else [a])
-
-        if isinstance(t,T):
-            return T(CreaLista(self.t) + CreaLista(t.t))
-
-        if isinstance(t,Matrix):
-            return t.__rand__(self)
 
 class Normal(Matrix):
     def __init__(self, data):
