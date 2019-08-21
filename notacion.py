@@ -49,19 +49,58 @@ def inverso(x):
              return y
 
 class Vector:
-    def __init__(self, sis, rpr='columna'):
-        """ Inicializa un vector a partir de distintos tipos de datos:
-        1) De una lista o tupla
-        >>> Vector([1,2,3])
+    """
+    Clase Vector
 
-        Vector([1,2,3])
-        2) De otro vector (realiza una copia)
-        """        
-    
+    Vector(sis, rpr='columna' )
+
+    Un Vector es una secuencia finita (sistema) de números. Los Vectores
+    se pueden construir con una lista o tupla de números. Si el argumento
+    es un Vector, el valor devuelto es el mismo Vector. El atributo rpr
+    indica al entorno Jupyter el vector debe ser escrito como fila o columna.
+
+    Parámetros
+    ----------
+    sis   : sistema de números
+        debe ser una lista o tupla de números, o bien otro Vector
+    rpr   : representación en Jupyter ('columna' por defecto)
+        indica la forma de representar el Vector en Jupyter
+        Si rpr='fila' se representa en forma de fila.
+        En caso contrario se representa en forma de columna.
+
+    Atributos
+    ---------
+    lista : el sistema de números almacenado
+    n     : el número de elementos de la lista
+    rpr   : su modo de representación en Jupyter
+
+    Ejemplos
+    --------
+    Crea un Vector a partir de una lista de números
+    >>> Vector( [1,2,3] )
+
+    Vector([1,2,3])
+
+    Crea un Vector a partir de una tupla de números
+    >>> Vector( (1,2,3) )
+
+    Vector([1,2,3])
+
+    Crea un Vector a partir de otro Vector
+    >>> Vector( Vector([1,2,3]) )
+
+    Vector([1,2,3])
+    """        
+    def __init__(self, sis, rpr='columna'):
+        """
+        Inicializa un Vector con una lista, tupla, u otro Vector
+        """
         if isinstance(sis, (list,tuple)):
             self.lista  =  list(sis)
+
         elif isinstance(sis, Vector):
             self.lista = sis.lista        
+
         else:
             raise ValueError('¡el argumento: debe ser una lista, tupla o Vector')
 
@@ -415,6 +454,7 @@ class Matrix:
                 '\\\\'.join(['&'.join([latex(i|self|j) for j in range(1,self.n+1) ]) \
                                                        for i in range(1,self.m+1) ]) + \
                '\\end{bmatrix}' 
+
 class T:
     def __init__(self, t):
         """ Inicializa una transformación elemental """        
