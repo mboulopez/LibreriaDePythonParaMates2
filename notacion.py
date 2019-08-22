@@ -52,8 +52,6 @@ class Vector:
     """
     Clase Vector
 
-    Vector(sis, rpr='columna' )
-
     Un Vector es una secuencia finita (sistema) de números. Los Vectores
     se pueden construir con una lista o tupla de números. Si el argumento
     es un Vector, el valor devuelto es el mismo Vector. El atributo rpr
@@ -102,7 +100,7 @@ class Vector:
             self.lista = sis.lista        
 
         else:
-            raise ValueError('¡el argumento: debe ser una lista, tupla o Vector')
+            raise ValueError('¡el argumento: debe ser una lista, tupla o Vector!')
 
         self.rpr  =  rpr
         self.n    =  len (self.lista)
@@ -206,24 +204,75 @@ class Vector:
                    '\\\\'.join([latex(self|i) for i in range(1,self.n+1)]) + \
                    '\\end{pmatrix}'
 class Matrix:
+    """Clase Matrix
+
+    Una Matrix es una secuencia finita (sistema) de Vectores. Una Matrix se puede
+    construir con una lista o tupla de Vectores con el mismo número de componentes
+    (serán las columnas de la matriz); una lista (o una tupla) de listas o tuplas
+    con el mismo número de componentes (serán las filas de la matriz); otra Matrix
+    (el valor devuelto será la misma Matrix); una BlockMatrix (el valor devuelto es
+    la Matrix correspondiente a la matriz obtenida al unir todos los bloques).
+
+    Parámetros
+    ----------
+    sis   : sistema de números
+        Lista (o tupla) de Vectores, listas o tuplas con el mismo núm. de componentes.
+
+    Atributos
+    ---------
+    lista : el sistema de Vectores almacenado
+    m     : el número de filas de la matriz
+    n     : el número de columnas de la matriz
+
+    Ejemplos
+    --------
+    Crea una Matrix a partir de una lista de Vectores
+    >>> a = Vector( [1,2] )
+    >>> b = Vector( [1,0] )
+    >>> c = Vector( [9,2] )
+    >>> Matrix( [a,b,c] )
+
+    Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
+
+    Crea una Matrix a partir de una lista de listas de números
+    >>> A = Matrix( [ [1,1,9], [2,0,2] ] )
+    >>> A
+
+    Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
+
+    Crea una Matrix a partir de otra Matrix
+    >>> Matrix( A )
+
+    Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
+
+    Crea una Matrix a patir de una BlockMatrix
+    >>> Matrix( {1}|A|{2} )
+
+    Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
+    """
+    """ Inicializa una matriz a partir de distintos tipos de datos:
+
+    1) De una lista de vectores (columnas)
+    >>> Matrix([Vector([1,2,3]),Vector([4,5,6])])
+
+    Matrix([Vector([1,2,3]),Vector([4,5,6])])
+
+    2) De una lista de listas de coeficientes (filas)
+    >>> Matrix([[1, 4], [2, 5], [3, 6]])
+
+    Matrix([Vector([1,2,3]),Vector([4,5,6])])
+
+    3) De una BlockMatrix (reune todas las matrices)
+
+    4) De otra matriz (realiza una copia)
+    """
+
     def __init__(self, sis):
-        """ Inicializa una matriz a partir de distintos tipos de datos:
-
-        1) De una lista de vectores (columnas)
-        >>> Matrix([Vector([1,2,3]),Vector([4,5,6])])
-
-        Matrix([Vector([1,2,3]),Vector([4,5,6])])
-
-        2) De una lista de listas de coeficientes (filas)
-        >>> Matrix([[1, 4], [2, 5], [3, 6]])
-
-        Matrix([Vector([1,2,3]),Vector([4,5,6])])
-
-        3) De una BlockMatrix (reune todas las matrices)
-
-        4) De otra matriz (realiza una copia)
         """
-
+        Inicializa una Matriz con una lista, o tupla de Vectores, listas
+        o tuplas con el mismo numero de componentes; con otra Matrix o con
+        una BlockMatrix
+        """
 
         
         if isinstance(sis, Matrix):
@@ -238,19 +287,15 @@ class Matrix:
             raise ValueError('¡el argumento debe ser una lista o tupla de vectores una lista (o tupla) de listas o tuplas, una BlockMatrix o una Matrix!')
                                     
         elif isinstance(sis[0], (list, tuple)):
-            it = iter(sis)
-            the_len = len(next(it))
-            if not all(len(l) == the_len for l in it):
-                raise ValueError('no todas las listas (filas) tienen la misma longitud!')
+            if not all ( (type(sis[0]) == type(v)) and (len(sis[0]) == len(v)) for v in iter(sis)):
+                raise ValueError('no todas son listas o no tienen la misma longitud!')
     
             self.lista  =  [ Vector([ sis[i][j] for i in range(len(sis   )) ]) \
                                                 for j in range(len(sis[0])) ]                                                
 
         elif isinstance(sis[0], Vector):
-            it = iter(sis)
-            the_len = len(next(it).lista)
-            if not all(len(l.lista) == the_len for l in it):
-                raise ValueError('no todos los vectores (columnas) tienen la misma longitud!')
+            if not all ( (Vector == type(v)) and (sis[0].n == v.n) for v in iter(sis)):
+                raise ValueError('no todos son vectores, o no tienen la misma longitud!')
 
             self.lista  =  list(sis)
 
