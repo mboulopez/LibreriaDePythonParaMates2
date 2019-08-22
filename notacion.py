@@ -106,16 +106,34 @@ class Vector:
         self.n    =  len (self.lista)
 
     def __or__(self,i):
-        """ Extrae la i-esima componente de un vector por la derecha
+        """
+        Extrae la i-ésima componente del Vector (los índices comienzan por la posición 1)
+
+        Parámetros
+        ----------
+        i   : int, list o tuple
+           Índice o lista de índices de los elementos a selecionar
+
+        Resultado
+        ---------
+        int, float, Fraction 
+           Si el parámetro i es int, devuelve el componente i-ésimo del Vector.
+        Vector
+           Si el parámetro i es list o tuple, devuelve el Vector formado por
+           los componentes indicados en la lísta de índices.
+
+        Ejemplos
+        --------
+        Seleción de una componente
         >>> Vector([10,20,30]) | 2
 
         20
 
-        o un sub-vector a partir de una lista o tupla de índices        
-        >>> Vector([10,20,30]) | [2,3]
-        >>> Vector([10,20,30]) | (2,3)
+        Creación de un sub-vector a partir de una lista o tupla de índices        
+        >>> Vector([10,20,30]) | [2,1,2]
+        >>> Vector([10,20,30]) | (2,1,2)
 
-        Vector([20, 30])
+        Vector([20, 10, 20])
         """
         if isinstance(i,int):
             return self.lista[i-1]
@@ -123,15 +141,8 @@ class Vector:
             return Vector ([ (self|a) for a in i ])
         
     def __ror__(self,i):
-        """ lo mismo que __or__ solo que por la izquierda
-        >>> 1 | Vector([10,20,30])
-
-        10
-
-        >>> [2,3] | Vector([10,20,30])
-        >>> (2,3) | Vector([10,20,30])
-
-        Vector([20, 30])
+        """
+        Hace lo mismo que el método __or__ solo que operando por la izquierda
         """    
         return self | i
 
@@ -250,23 +261,6 @@ class Matrix:
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
     """
-    """ Inicializa una matriz a partir de distintos tipos de datos:
-
-    1) De una lista de vectores (columnas)
-    >>> Matrix([Vector([1,2,3]),Vector([4,5,6])])
-
-    Matrix([Vector([1,2,3]),Vector([4,5,6])])
-
-    2) De una lista de listas de coeficientes (filas)
-    >>> Matrix([[1, 4], [2, 5], [3, 6]])
-
-    Matrix([Vector([1,2,3]),Vector([4,5,6])])
-
-    3) De una BlockMatrix (reune todas las matrices)
-
-    4) De otra matriz (realiza una copia)
-    """
-
     def __init__(self, sis):
         """
         Inicializa una Matriz con una lista, o tupla de Vectores, listas
@@ -303,41 +297,45 @@ class Matrix:
         self.n  =  len(self.lista)
 
     def __or__(self,j):
-        """ Extrae el i-ésimo vector columna de  una matriz 
-        >>> Matrix([[1,2,3],[4,5,6]]) | 2
-
-        Vector([2, 5])
-
-        y también una matriz formada por una serie de vectores columna
-        >>> Matrix([[1,2,3],[4,5,6]]) | [2,3]
-
-        Matrix([[2, 3], [5, 6]])
-
-        o
-
-        >>> Matrix([[1,2,3],[4,5,6]]) | (2,3)
-        Matrix([[2, 3], [5, 6]])
-
-        y también particiona una matriz por columnas
-        >>> Matrix([[1,2,3],[4,5,6],[5,6,7]]) | {2}
-
-        BlockMatrix([[Matrix([[1, 2], [4, 5], [5, 6]]), Matrix([[3], [6], [7]])]])
         """
-        """ Extrae el i-ésimo vector fila de  una matriz 
-        >>> 2 | Matrix([[1,2,3],[4,5,6],[5,6,7]]) 
+        Extrae la i-ésima columna de Matrix (los índices comienzan por la posición 1)
 
-        Vector([4, 5, 6])
+        Parámetros
+        ----------
+        j   : int, list, tuple
+           Índice o lista de índices de las columnas a selecionar
+            : set
+           Conjunto de índices que indican por que columnas particionar la matriz
 
-        y también una sub-matriz a partir de una lista o tupla de índices de filas
-        >>> [2,3] | Matrix([[1,2,3],[4,5,6],[5,6,7]]) 
-        >>> (2,3) | Matrix([[1,2,3],[4,5,6],[5,6,7]]) 
+        Resultado
+        ---------
+        Vector
+           Si el parámetro j es int, devuelve la columna j-ésima de Matrix.
+        Matrix
+           Si el parámetro j es list o tuple, devuelve la Matrix formada por
+           las columnas indicadas en la lísta de índices.
+        BlockMatrix
+           Si el parámetro j es un set, devuelve la BlockMatrix que resulta de
+           particionar la matriz por las columnas indicadas por los índices del
+           conjunto j
 
-        Matrix([[4, 5, 6], [5, 6, 7]])
+        Ejemplos
+        --------
+        Extrae la j-ésima columna la matriz 
+        >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | 2
 
-        y también particiona una matriz por filas 
-        >>> {2} | Matrix([[1,2,3],[4,5,6],[5,6,7]])
+        Vector([0,2])
 
-        BlockMatrix([[Matrix([[1, 2, 3], [4, 5, 6]])], [Matrix([[5, 6, 7]])]])
+        Creación de una Matrix formada por los Vectores columna indicados en una lista o tupla
+        >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | [2,1]
+        >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | (2,1)
+
+        Matrix( [Vector([0,2]), Vector([1,0])] )
+
+        Creación de una BlockMatrix mediante el particionado de la matriz por columnas
+        >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | {2}
+
+        BlockMatrix([[Matrix([Vector([1, 0]), Vector([0, 2])]), Matrix([Vector([3, 0])])]])
         """
         if isinstance(j,int):
             return self.lista[j-1]
@@ -349,49 +347,58 @@ class Matrix:
             return BlockMatrix ([ [self|a for a in particion(j,self.n)] ]) 
 
     def __invert__(self):
-        """ Devuelve la matriz traspuesta
-        >>> ~Matrix([[1,2,3]])
-
-        Matrix([[1],[2],[3]]) 
         """
+        Devuelve la traspuesta de la matriz
+
+        Ejemplo
+        -------
+        >>> ~Matrix([Vector([1]), Vector([2]), Vector([3])])
+
+        Matrix([Vector([1, 2, 3])])
+        """
+
         return Matrix ([ (self|j).lista for j in range(1,self.n+1) ])
 
     def __ror__(self,i):
-        """ Extrae el i-ésimo vector columna de  una matriz 
-        >>> Matrix([[1,2,3],[4,5,6]]) | 2
-
-        Vector([2, 5])
-
-        y también una matriz formada por una serie de vectores columna
-        >>> Matrix([[1,2,3],[4,5,6]]) | [2,3]
-
-        Matrix([[2, 3], [5, 6]])
-
-        o
-
-        >>> Matrix([[1,2,3],[4,5,6]]) | (2,3)
-        Matrix([[2, 3], [5, 6]])
-
-        y también particiona una matriz por columnas
-        >>> Matrix([[1,2,3],[4,5,6],[5,6,7]]) | {2}
-
-        BlockMatrix([[Matrix([[1, 2], [4, 5], [5, 6]]), Matrix([[3], [6], [7]])]])
         """
-        """ Extrae el i-ésimo vector fila de  una matriz 
-        >>> 2 | Matrix([[1,2,3],[4,5,6],[5,6,7]]) 
+        Extrae la i-ésima fila de Matrix (los índices comienzan por la posición 1)
 
-        Vector([4, 5, 6])
+        Parámetros
+        ----------
+        i   : int, list, tuple
+           Índice o lista de índices de las filas a selecionar
+            : set
+           Conjunto de índices que indican por que filas particionar la matriz
 
-        y también una sub-matriz a partir de una lista o tupla de índices de filas
-        >>> [2,3] | Matrix([[1,2,3],[4,5,6],[5,6,7]]) 
-        >>> (2,3) | Matrix([[1,2,3],[4,5,6],[5,6,7]]) 
+        Resultado
+        ---------
+        Vector
+           Si el parámetro i es int, devuelve la fila i-ésima de Matrix.
+        Matrix
+           Si el parámetro i es list o tuple, devuelve la Matrix cuyas filas coinciden
+           con las indicadas en la lísta de índices.
+        BlockMatrix
+           Si el parámetro i es un set, devuelve la BlockMatrix que resulta de
+           particionar la matriz por las filas indicadas por los índices del
+           conjunto i
 
-        Matrix([[4, 5, 6], [5, 6, 7]])
+        Ejemplos
+        --------
+        Extrae la j-ésima columna la matriz 
+        >>> 2 | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])])
 
-        y también particiona una matriz por filas 
-        >>> {2} | Matrix([[1,2,3],[4,5,6],[5,6,7]])
+        Vector([0, 2, 0])
 
-        BlockMatrix([[Matrix([[1, 2, 3], [4, 5, 6]])], [Matrix([[5, 6, 7]])]])
+        Creación de una Matrix formada por los Vectores columna indicados en una lista o tupla
+        >>> [1,1] | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) 
+        >>> (1,1) | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])])
+
+        Matrix([Vector([1, 1]), Vector([0, 0]), Vector([3, 3])])
+
+        Creación de una BlockMatrix mediante el particionado de la matriz por columnas
+        >>> {1} | Matrix([Vector([1,0]), Vector([0,2])])
+
+        BlockMatrix([[Matrix([Vector([1]), Vector([0])])], [Matrix([Vector([0]), Vector([2])])]])
         """
         if isinstance(i,int):
             return Vector ( (~self)|i , rpr='fila')
