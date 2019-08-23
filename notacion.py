@@ -1,4 +1,8 @@
 # coding=utf8
+"""
+Librería para la asignatura Matemáticas II del grado en Economía de la UCM que sigue
+la notación de las notas de clase de Marcos Bujosa
+"""
 
 # Copyright (C) 2019  Marcor Bujosa
 
@@ -52,39 +56,35 @@ class Vector:
     """
     Clase Vector
 
-    Un Vector es una secuencia finita (sistema) de números. Los Vectores
-    se pueden construir con una lista o tupla de números. Si el argumento
-    es un Vector, el valor devuelto es el mismo Vector. El atributo rpr
-    indica al entorno Jupyter el vector debe ser escrito como fila o columna.
+    Un Vector es una secuencia finita (sistema) de números. Los Vectores se pueden
+    construir con una lista o tupla de números. Si el argumento es un Vector, el
+    valor devuelto es el mismo Vector. El atributo 'rpr' indica al entorno Jupyter
+    el vector debe ser escrito como fila o columna.
 
-    Parámetros
-    ----------
-    sis   : sistema de números
-        debe ser una lista o tupla de números, o bien otro Vector
-    rpr   : representación en Jupyter ('columna' por defecto)
-        indica la forma de representar el Vector en Jupyter
-        Si rpr='fila' se representa en forma de fila.
-        En caso contrario se representa en forma de columna.
+    Parámetros:
+        sis (list, tuple, Vector) : Sistema de números. Debe ser una lista o tupla de
+            números, o bien otro Vector
+        rpr (str) : Representación en Jupyter ('columna' por defecto). Indica la forma
+            de representar el Vector en Jupyter. Si rpr='fila' se representa en forma
+            de fila. En caso contrario se representa en forma de columna.
 
-    Atributos
-    ---------
-    lista : el sistema de números almacenado
-    n     : el número de elementos de la lista
-    rpr   : su modo de representación en Jupyter
+    Atributos:
+        lista (list): sistema de números almacenado
+        n     (int) : número de elementos de la lista
+        rpr   (str) : modo de representación en Jupyter
 
-    Ejemplos
-    --------
-    Crea un Vector a partir de una lista de números
+    Ejemplos:
+    >>> # Crea un Vector a partir de una lista de números
     >>> Vector( [1,2,3] )
 
     Vector([1,2,3])
 
-    Crea un Vector a partir de una tupla de números
+    >>> # Crea un Vector a partir de una tupla de números
     >>> Vector( (1,2,3) )
 
     Vector([1,2,3])
 
-    Crea un Vector a partir de otro Vector
+    >>> # Crea un Vector a partir de otro Vector
     >>> Vector( Vector([1,2,3]) )
 
     Vector([1,2,3])
@@ -109,27 +109,21 @@ class Vector:
         """
         Extrae la i-ésima componente del Vector (los índices comienzan por la posición 1)
 
-        Parámetros
-        ----------
-        i   : int, list o tuple
-           Índice o lista de índices de los elementos a selecionar
+        Parámetros:
+            i (int, list, tuple): Índice o lista de índices de los elementos a selecionar
 
-        Resultado
-        ---------
-        int, float, Fraction 
-           Si el parámetro i es int, devuelve el componente i-ésimo del Vector.
-        Vector
-           Si el parámetro i es list o tuple, devuelve el Vector formado por
-           los componentes indicados en la lísta de índices.
+        Resultado:
+            número: Si el parámetro i es int, devuelve el componente i-ésimo del Vector.
+            Vector: Si el parámetro i es list o tuple, devuelve el Vector formado por los
+                componentes indicados en la lista de índices.
 
-        Ejemplos
-        --------
-        Seleción de una componente
+        Ejemplos:
+        >>> # Seleción de una componente
         >>> Vector([10,20,30]) | 2
 
         20
 
-        Creación de un sub-vector a partir de una lista o tupla de índices        
+        >>> # Creación de un sub-vector a partir de una lista o tupla de índices        
         >>> Vector([10,20,30]) | [2,1,2]
         >>> Vector([10,20,30]) | (2,1,2)
 
@@ -141,22 +135,17 @@ class Vector:
             return Vector ([ (self|a) for a in i ])
         
     def __ror__(self,i):
-        """
-        Hace lo mismo que el método __or__ solo que operando por la izquierda
-        """    
+        """Hace lo mismo que el método __or__ solo que operando por la izquierda"""    
         return self | i
 
     def __add__(self, other):
         """
         Función devuelve el Vector resultante de sumar dos Vectores componente a componente.
 
-        Parámetros
-        ----------
-        other : Vector
-           Otro vector con el mismo número de elementos
+        Parámetros: 
+            other (Vector): Otro vector con el mismo número de elementos
 
         Ejemplo
-        -------
         >>> Vector([10, 20, 30]) + Vector([0, 1, 1])
 
         Vector([10, 21, 31])        
@@ -172,24 +161,17 @@ class Vector:
         """
         Multiplica un Vector por un número u otro Vector a su izquierda.
 
-        Parámetros
-        ----------
-        x   : int, float o Fraction 
-           Número
-            : Vector
-           Vector con el mismo número de componentes.
+        Parámetros:
+            x (int, float o Fraction): Número por el que se multiplica
+              (Vector): Vector con el mismo número de componentes.
 
-        Resultado
-        ---------
-        Vector
-           Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
-           de multiplicar cada componente por x
-        Número
-           Si el parámetro x es Vector, devuelve el producto punto entre vectores
-           (o producto escalar usual en R^n)
+        Resultado:
+            Vector: Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
+                de multiplicar cada componente por x
+            Número: Si el parámetro x es Vector, devuelve el producto punto entre vectores
+                (o producto escalar usual en R^n)
 
-        Ejemplos
-        --------   
+        Ejemplos:
         >>> 3 * Vector([10, 20, 30]) 
 
         Vector([30, 60, 90])        
@@ -209,23 +191,17 @@ class Vector:
     def __mul__(self, x):
         Multiplica un Vector por un número o una Matrix a su derecha.
 
-        Parámetros
-        ----------
-        x   : int, float o Fraction 
-           Número
-            : Matrix
-           Matrix con el mismo número de filas que componentes tiene el Vector.
+        Parámetros:
+            x (int, float o Fraction): Número por el que se multiplica
+              (Matrix): Matrix con el mismo número de filas que componentes tiene el Vector.
 
-        Resultado
-        ---------
-        Vector
-           * Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
-           de multiplicar cada componente por x
-           * Si el parámetro x es Matrix, devuelve Vector combinación lineal de las filas de Matrix,
-           donde los coeficientes de la combinación son los componentes del Vector
+        Resultado:
+            Vector: * Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
+               de multiplicar cada componente por x
+                    * Si el parámetro x es Matrix, devuelve Vector combinación lineal de las
+               filas de Matrix (componentes del Vector son los coeficientes de la combinación)
 
-        Ejemplos
-        --------   
+        Ejemplos:
         >>> Vector([10, 20, 30]) * 3
 
         Vector([30, 60, 90])
@@ -246,9 +222,9 @@ class Vector:
                 print("error en producto: Vector y Matrix incompatibles")
 
     def __eq__(self, other):
-        """
-        a == b es True si a.lista es igual que b.lista. False en caso contrario
-        """
+
+        """a == b es True si a.lista es igual que b.lista. False en caso contrario"""
+
         return self.lista == other.lista
     def __repr__(self):
         """ Muestra el vector en su representación python """
@@ -278,20 +254,18 @@ class Matrix:
     (el valor devuelto será la misma Matrix); una BlockMatrix (el valor devuelto es
     la Matrix correspondiente a la matriz obtenida al unir todos los bloques).
 
-    Parámetros
-    ----------
-    sis   : sistema de números
-        Lista (o tupla) de Vectores, listas o tuplas con el mismo núm. de componentes.
+    Parámetros:
+        sis (list, tuple, Matrix, BlockMarix): Lista (o tupla) de Vectores con el
+            mismo núm. de componentes; lista (o tupla) de listas o tuplas con el mismo
+            núm. de componentes; otra matriz; o una matriz particionada por bloques.
 
-    Atributos
-    ---------
-    lista : el sistema de Vectores almacenado
-    m     : el número de filas de la matriz
-    n     : el número de columnas de la matriz
+    Atributos:
+        lista (list): sistema de Vectores almacenado
+        m     (int) : número de filas de la matriz
+        n     (int) : número de columnas de la matriz
 
-    Ejemplos
-    --------
-    Crea una Matrix a partir de una lista de Vectores
+    Ejemplos:
+    >>> # Crea una Matrix a partir de una lista de Vectores
     >>> a = Vector( [1,2] )
     >>> b = Vector( [1,0] )
     >>> c = Vector( [9,2] )
@@ -299,18 +273,18 @@ class Matrix:
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
 
-    Crea una Matrix a partir de una lista de listas de números
+    >>> # Crea una Matrix a partir de una lista de listas de números
     >>> A = Matrix( [ [1,1,9], [2,0,2] ] )
     >>> A
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
 
-    Crea una Matrix a partir de otra Matrix
+    >>> # Crea una Matrix a partir de otra Matrix
     >>> Matrix( A )
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
 
-    Crea una Matrix a patir de una BlockMatrix
+    >>> # Crea una Matrix a patir de una BlockMatrix
     >>> Matrix( {1}|A|{2} )
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
@@ -354,39 +328,30 @@ class Matrix:
         """
         Extrae la i-ésima columna de Matrix (los índices comienzan por la posición 1)
 
-        Parámetros
-        ----------
-        j   : int, list, tuple
-           Índice o lista de índices de las columnas a selecionar
-            : set
-           Conjunto de índices que indican por que columnas particionar la matriz
+        Parámetros:
+            j (int, list, tuple): Índice o lista de índices de las columnas a selecionar
+              (set): Conjunto de índices que indican por que columnas particionar la matriz
 
-        Resultado
-        ---------
-        Vector
-           Si el parámetro j es int, devuelve la columna j-ésima de Matrix.
-        Matrix
-           Si el parámetro j es list o tuple, devuelve la Matrix formada por
-           las columnas indicadas en la lísta de índices.
-        BlockMatrix
-           Si el parámetro j es un set, devuelve la BlockMatrix que resulta de
-           particionar la matriz por las columnas indicadas por los índices del
-           conjunto j
+        Resultado:
+            Vector: Si el parámetro j es int, devuelve la columna j-ésima de Matrix.
+            Matrix: Si el parámetro j es list o tuple, devuelve la Matrix formada por
+                las columnas indicadas en la lísta de índices.
+            BlockMatrix: Si el parámetro j es un set, devuelve la BlockMatrix que resulta de
+                particionar la matriz por las columnas indicadas por los índices del conjunto j
 
-        Ejemplos
-        --------
-        Extrae la j-ésima columna la matriz 
+        Ejemplos:
+        >>> # Extrae la j-ésima columna la matriz 
         >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | 2
 
         Vector([0,2])
 
-        Creación de una Matrix formada por los Vectores columna indicados en una lista o tupla
+        >>> # Creación de Matrix formada por los Vectores columna indicados en una lista o tupla
         >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | [2,1]
         >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | (2,1)
 
         Matrix( [Vector([0,2]), Vector([1,0])] )
 
-        Creación de una BlockMatrix mediante el particionado de la matriz por columnas
+        >>> # Creación de una BlockMatrix mediante el particionado de la matriz por columnas
         >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | {2}
 
         BlockMatrix([[Matrix([Vector([1, 0]), Vector([0, 2])]), Matrix([Vector([3, 0])])]])
@@ -402,10 +367,9 @@ class Matrix:
 
     def __invert__(self):
         """
-        Devuelve la traspuesta de la matriz
+        Devuelve la traspuesta de una matriz
 
-        Ejemplo
-        -------
+        Ejemplo:
         >>> ~Matrix([Vector([1]), Vector([2]), Vector([3])])
 
         Matrix([Vector([1, 2, 3])])
@@ -417,39 +381,30 @@ class Matrix:
         """
         Extrae la i-ésima fila de Matrix (los índices comienzan por la posición 1)
 
-        Parámetros
-        ----------
-        i   : int, list, tuple
-           Índice o lista de índices de las filas a selecionar
-            : set
-           Conjunto de índices que indican por que filas particionar la matriz
+        Parámetros:
+            i (int, list, tuple): Índice o lista de índices de las filas a selecionar
+              (set): Conjunto de índices que indican por que filas particionar la matriz
 
-        Resultado
-        ---------
-        Vector
-           Si el parámetro i es int, devuelve la fila i-ésima de Matrix.
-        Matrix
-           Si el parámetro i es list o tuple, devuelve la Matrix cuyas filas coinciden
-           con las indicadas en la lísta de índices.
-        BlockMatrix
-           Si el parámetro i es un set, devuelve la BlockMatrix que resulta de
-           particionar la matriz por las filas indicadas por los índices del
-           conjunto i
+        Resultado:
+            Vector: Si el parámetro i es int, devuelve la fila i-ésima de Matrix.
+            Matrix: Si el parámetro i es list o tuple, devuelve la Matrix cuyas filas coinciden
+                con las indicadas en la lísta de índices.
+            BlockMatrix: Si el parámetro i es un set, devuelve la BlockMatrix que resulta de
+                particionar la matriz por las filas indicadas por los índices del conjunto i
 
-        Ejemplos
-        --------
-        Extrae la j-ésima columna la matriz 
+        Ejemplos:
+        >>> # Extrae la j-ésima columna la matriz 
         >>> 2 | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])])
 
         Vector([0, 2, 0])
 
-        Creación de una Matrix formada por los Vectores columna indicados en una lista o tupla
+        >>> # Creación de Matrix formada por los Vectores columna indicados en una lista o tupla
         >>> [1,1] | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) 
         >>> (1,1) | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])])
 
         Matrix([Vector([1, 1]), Vector([0, 0]), Vector([3, 3])])
 
-        Creación de una BlockMatrix mediante el particionado de la matriz por columnas
+        >>> # Creación de una BlockMatrix mediante el particionado de la matriz por columnas
         >>> {1} | Matrix([Vector([1,0]), Vector([0,2])])
 
         BlockMatrix([[Matrix([Vector([1]), Vector([0])])], [Matrix([Vector([0]), Vector([2])])]])
