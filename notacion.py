@@ -147,22 +147,56 @@ class Vector:
         return self | i
 
     def __add__(self, other):
-        """ Suma de vectores
-        >>> Vector([10,20,30]) + Vector([0,1,1])
+        """
+        Función devuelve el Vector resultante de sumar dos Vectores componente a componente.
 
-        Vector([10,21,31])        
+        Parámetros
+        ----------
+        other : Vector
+           Otro vector con el mismo número de elementos
+
+        Ejemplo
+        -------
+        >>> Vector([10, 20, 30]) + Vector([0, 1, 1])
+
+        Vector([10, 21, 31])        
         """
         if isinstance(other, Vector):
             if self.n == other.n:
                 return Vector ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
+
             else:
                 print("error en la suma: vectores con distinto número de componentes")
             
     def __rmul__(self, x):
-        """ Multiplica un vector por un número a su izquierda
-        >>> 3 * Vector([10,20,30]) 
+        """
+        Multiplica un Vector por un número u otro Vector a su izquierda.
 
-        Vector([30,60,90])        
+        Parámetros
+        ----------
+        x   : int, float o Fraction 
+           Número
+            : Vector
+           Vector con el mismo número de componentes.
+
+        Resultado
+        ---------
+        Vector
+           Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
+           de multiplicar cada componente por x
+        Número
+           Si el parámetro x es Vector, devuelve el producto punto entre vectores
+           (o producto escalar usual en R^n)
+
+        Ejemplos
+        --------   
+        >>> 3 * Vector([10, 20, 30]) 
+
+        Vector([30, 60, 90])        
+
+        >>> Vector([1, 1, 1]) * Vector([10, 20, 30])
+
+        60
         """
         if isinstance(x, (int, float, Fraction)):
             return Vector ([ x*(self|i) for i in range(1,self.n+1) ])
@@ -172,17 +206,35 @@ class Vector:
                 return sum([ (x|i)*(self|i) for i in range(1,self.n+1) ])
             else:
                 print("error en producto: vectores con distinto número de componentes")
-
     def __mul__(self, x):
-        """ Multiplica un vector por un número a su derecha
-        >>> Vector([10,20,30]) * 3
+        Multiplica un Vector por un número o una Matrix a su derecha.
 
-        Vector([30,60,90])        
+        Parámetros
+        ----------
+        x   : int, float o Fraction 
+           Número
+            : Matrix
+           Matrix con el mismo número de filas que componentes tiene el Vector.
 
-        o multiplica un vector por otro (producto escalar usual o producto punto) 
-        >>> Vector([1, -1])*Vector([1, 1])
+        Resultado
+        ---------
+        Vector
+           * Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
+           de multiplicar cada componente por x
+           * Si el parámetro x es Matrix, devuelve Vector combinación lineal de las filas de Matrix,
+           donde los coeficientes de la combinación son los componentes del Vector
 
-        0
+        Ejemplos
+        --------   
+        >>> Vector([10, 20, 30]) * 3
+
+        Vector([30, 60, 90])
+
+        >>> a = Vector([1, 1])
+        >>> B = Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
+        >>> a * B
+
+        Vector([3, 1, 11])
         """
         if isinstance(x, (int, float, Fraction)):
             return x*self
@@ -194,7 +246,9 @@ class Vector:
                 print("error en producto: Vector y Matrix incompatibles")
 
     def __eq__(self, other):
-        """a==b es True si a.lista es igual que b.lista. False en caso contrario"""
+        """
+        a == b es True si a.lista es igual que b.lista. False en caso contrario
+        """
         return self.lista == other.lista
     def __repr__(self):
         """ Muestra el vector en su representación python """
@@ -401,7 +455,7 @@ class Matrix:
         BlockMatrix([[Matrix([Vector([1]), Vector([0])])], [Matrix([Vector([0]), Vector([2])])]])
         """
         if isinstance(i,int):
-            return Vector ( (~self)|i , rpr='fila')
+            return Vector ( (~self)|i, rpr='fila' )
             
         elif isinstance(i, (list,tuple)):        
             return Matrix ([ (a|self).lista  for a in i ])
