@@ -53,20 +53,20 @@ def inverso(x):
              return y
 
 class Vector:
-    """
-    Clase Vector
+    """Clase Vector
 
-    Un Vector es una secuencia finita (sistema) de números. Los Vectores se pueden
-    construir con una lista o tupla de números. Si el argumento es un Vector, el
-    valor devuelto es el mismo Vector. El atributo 'rpr' indica al entorno Jupyter
-    el vector debe ser escrito como fila o columna.
+    Un Vector es una secuencia finita (sistema) de números. Los Vectores se
+    pueden construir con una lista o tupla de números. Si el argumento es un
+    Vector, el valor devuelto es el mismo Vector. El atributo 'rpr' indica
+    al entorno Jupyter el vector debe ser escrito como fila o columna.
 
     Parámetros:
-        sis (list, tuple, Vector) : Sistema de números. Debe ser una lista o tupla de
-            números, o bien otro Vector
-        rpr (str) : Representación en Jupyter ('columna' por defecto). Indica la forma
-            de representar el Vector en Jupyter. Si rpr='fila' se representa en forma
-            de fila. En caso contrario se representa en forma de columna.
+        sis (list, tuple, Vector) : Sistema de números. Debe ser una lista o
+            tupla de números, o bien otro Vector
+        rpr (str) : Representación en Jupyter ('columna' por defecto).
+            Indica la forma de representar el Vector en Jupyter. Si 
+            rpr='fila' se representa en forma de fila. En caso contrario se 
+            representa en forma de columna.
 
     Atributos:
         lista (list): sistema de números almacenado
@@ -74,13 +74,9 @@ class Vector:
         rpr   (str) : modo de representación en Jupyter
 
     Ejemplos:
-    >>> # Crea un Vector a partir de una lista de números
-    >>> Vector( [1,2,3] )
-
-    Vector([1,2,3])
-
-    >>> # Crea un Vector a partir de una tupla de números
-    >>> Vector( (1,2,3) )
+    >>> # Crea un Vector a partir de una lista (o tupla) de números
+    >>> Vector( [1,2,3] )   # con lista
+    >>> Vector( (1,2,3) )   # con tupla
 
     Vector([1,2,3])
 
@@ -89,10 +85,10 @@ class Vector:
 
     Vector([1,2,3])
     """        
+
     def __init__(self, sis, rpr='columna'):
-        """
-        Inicializa un Vector con una lista, tupla, u otro Vector
-        """
+        """Inicializa un Vector con una lista, tupla, u otro Vector"""
+
         if isinstance(sis, (list,tuple)):
             self.lista  =  list(sis)
 
@@ -106,15 +102,18 @@ class Vector:
         self.n    =  len (self.lista)
 
     def __or__(self,i):
-        """
-        Extrae la i-ésima componente del Vector (los índices comienzan por la posición 1)
+        """Selector por la derecha
+
+        Extrae la i-ésima componente del Vector, o genera un nuevo vector con 
+        las componentes indicadas (los índices comienzan por la posición 1)
 
         Parámetros:
-            i (int, list, tuple): Índice o lista de índices de los elementos a selecionar
+            i (int, list, tuple): Índice (lista de índices) de los elementos a 
+               selecionar
 
         Resultado:
-            número: Si el parámetro i es int, devuelve el componente i-ésimo del Vector.
-            Vector: Si el parámetro i es list o tuple, devuelve el Vector formado por los
+            número: Cuando i es int, devuelve el componente i-ésimo del Vector.
+            Vector: Cuando i es list o tuple, devuelve el Vector formado por los
                 componentes indicados en la lista de índices.
 
         Ejemplos:
@@ -129,26 +128,32 @@ class Vector:
 
         Vector([20, 10, 20])
         """
+
         if isinstance(i,int):
             return self.lista[i-1]
+
         elif isinstance(i, (list,tuple) ):
             return Vector ([ (self|a) for a in i ])
         
     def __ror__(self,i):
-        """Hace lo mismo que el método __or__ solo que operando por la izquierda"""    
+        """Selector por la izquierda
+
+        Hace lo mismo que el método __or__ solo que operando por la izquierda
+        """    
+
         return self | i
     def __add__(self, other):
-        """
-        Función devuelve el Vector resultante de sumar dos Vectores componente a componente.
+        """Devuelve el Vector resultante de sumar dos Vectores
 
         Parámetros: 
             other (Vector): Otro vector con el mismo número de elementos
 
         Ejemplo
-        >>> Vector([10, 20, 30]) + Vector([0, 1, 1])
+        >>> Vector([10, 20, 30]) + Vector([-1, 1, 1])
 
-        Vector([10, 21, 31])        
+        Vector([9, 21, 31])        
         """
+        
         if isinstance(other, Vector):
             if self.n == other.n:
                 return Vector ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
@@ -157,18 +162,17 @@ class Vector:
                 print("error en la suma: vectores con distinto número de componentes")
             
     def __rmul__(self, x):
-        """
-        Multiplica un Vector por un número u otro Vector a su izquierda.
+        """Multiplica un Vector por un número o Vector que estén a su izquierda
 
         Parámetros:
             x (int, float o Fraction): Número por el que se multiplica
               (Vector): Vector con el mismo número de componentes.
 
         Resultado:
-            Vector: Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
-                de multiplicar cada componente por x
-            Número: Si el parámetro x es Vector, devuelve el producto punto entre vectores
-                (o producto escalar usual en R^n)
+            Vector: Cuando x es int, float o Fraction, devuelve el Vector que 
+                resulta de multiplicar cada componente por x
+            Número: Cuando x es Vector, devuelve el producto punto entre 
+                vectores (producto escalar usual en R^n)
 
         Ejemplos:
         >>> 3 * Vector([10, 20, 30]) 
@@ -179,6 +183,7 @@ class Vector:
 
         60
         """
+
         if isinstance(x, (int, float, Fraction)):
             return Vector ([ x*(self|i) for i in range(1,self.n+1) ])
 
@@ -188,18 +193,18 @@ class Vector:
             else:
                 print("error en producto: vectores con distinto número de componentes")
     def __mul__(self, x):
-        """
-        Multiplica un Vector por un número o una Matrix a su derecha.
+        """Multiplica un Vector por un número o Matrix a su derecha.
 
         Parámetros:
             x (int, float o Fraction): Número por el que se multiplica
-              (Matrix): Matrix con el mismo número de filas que componentes tiene el Vector.
+              (Matrix): Matrix con tantas filas como componentes tiene el Vector
 
         Resultado:
-            Vector: * Si el parámetro x es int, float o Fraction, devuelve el Vector que resulta
-               de multiplicar cada componente por x
-                    * Si el parámetro x es Matrix, devuelve Vector combinación lineal de las
-               filas de Matrix (componentes del Vector son los coeficientes de la combinación)
+            Vector: Cuando x es int, float o Fraction, devuelve el Vector que
+               resulta de multiplicar cada componente por x
+                    Cuando x es Matrix, devuelve el Vector combinación lineal de
+               las filas de Matrix (componentes del Vector son los coeficientes 
+               de la combinación lineal)
 
         Ejemplos:
         >>> Vector([10, 20, 30]) * 3
@@ -212,6 +217,7 @@ class Vector:
 
         Vector([3, 1, 11])
         """
+
         if isinstance(x, (int, float, Fraction)):
             return x*self
 
@@ -222,9 +228,7 @@ class Vector:
                 print("error en producto: Vector y Matrix incompatibles")
 
     def __eq__(self, other):
-
-        """a == b es True si a.lista es igual que b.lista. False en caso contrario"""
-
+        """Indica si es cierto que dos vectores son iguales"""
         return self.lista == other.lista
     def __repr__(self):
         """ Muestra el vector en su representación python """
@@ -247,17 +251,21 @@ class Vector:
 class Matrix:
     """Clase Matrix
 
-    Una Matrix es una secuencia finita (sistema) de Vectores con el mismo número de
-    componentes. Una Matrix se puede construir con una lista o tupla de Vectores con el
-    mismo número de componentes (serán las columnas de la matriz); una lista (o una tupla)
-    de listas o tuplas con el mismo número de componentes (serán las filas de la matriz);
-    otra Matrix (el valor devuelto será la misma Matrix); una BlockMatrix (el valor
-    devuelto es la Matrix correspondiente a la matriz obtenida al unir todos los bloques).
+    Una Matrix es una secuencia finita (sistema) de Vectores con el mismo 
+    número de componentes. Una Matrix se puede construir con una lista o 
+    tupla de Vectores con el mismo número de componentes (serán las columnas
+    de la matriz); una lista (o tupla) de listas o tuplas con el mismo 
+    número de componentes (serán las filas de la matriz); una Matrix (el 
+    valor devuelto será la misma Matrix); una BlockMatrix (el valor devuelto
+    es la Matrix correspondiente a la matriz obtenida al unir todos los 
+    bloques)
 
     Parámetros:
-        sis (list, tuple, Matrix, BlockMarix): Lista (o tupla) de Vectores con el
-            mismo núm. de componentes; lista (o tupla) de listas o tuplas con el mismo
-            núm. de componentes; otra matriz; o una matriz particionada por bloques.
+        sis (list, tuple, Matrix, BlockMarix): Lista (o tupla) de Vectores 
+            con el mismo núm. de componentes (columnas de la matriz); o 
+            lista (o tupla) de listas o tuplas con el mismo núm. de 
+            componentes (filas de la matriz); u otra Matrix; o una 
+            BlockMatrix (matriz particionada por bloques).
 
     Atributos:
         lista (list): sistema de Vectores almacenado
@@ -289,11 +297,10 @@ class Matrix:
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
     """
+
     def __init__(self, sis):
-        """
-        Inicializa una Matriz con una lista, o tupla de Vectores, listas o tuplas con el
-        mismo numero de componentes; con otra Matrix o con una BlockMatrix
-        """
+        """Inicializa una Matrix"""
+
         
         if isinstance(sis, Matrix):
             self.lista  =  sis.lista
@@ -304,7 +311,7 @@ class Matrix:
                                   for j in range(sis.n) for k in range(1,(sis.ln[j])+1) ]
                                   
         elif not isinstance(sis, (str, list, tuple)):
-            raise ValueError('¡el argumento debe ser una lista o tupla de vectores una lista (o tupla) de listas o tuplas, una BlockMatrix o una Matrix!')
+            raise ValueError('¡el argumento debe ser una lista (o tupla) de vectores, listas o tuplas; una BlockMatrix; o una Matrix!')
                                     
         elif isinstance(sis[0], (list, tuple)):
             if not all ( (type(sis[0]) == type(v)) and (len(sis[0]) == len(v)) for v in iter(sis)):
@@ -312,9 +319,9 @@ class Matrix:
     
             self.lista  =  [ Vector([ sis[i][j] for i in range(len(sis   )) ]) \
                                                 for j in range(len(sis[0])) ]                                                
-
+        
         elif isinstance(sis[0], Vector):
-            if not all ( (Vector == type(v)) and (sis[0].n == v.n) for v in iter(sis)):
+            if not all ( isinstance(v, Vector) and (sis[0].n == v.n) for v in iter(sis)):
                 raise ValueError('no todos son vectores, o no tienen la misma longitud!')
 
             self.lista  =  list(sis)
@@ -323,18 +330,21 @@ class Matrix:
         self.n  =  len(self.lista)
     def __or__(self,j):
         """
-        Extrae la i-ésima columna de Matrix (los índices comienzan por la posición 1)
+        Extrae la i-ésima columna de Matrix; o crea una Matrix con las columnas
+        indicadas; o crea una BlockMatrix particionando una Matrix por las
+        columnas indicadas (los índices comienzan por la posición 1)
 
         Parámetros:
-            j (int, list, tuple): Índice o lista de índices de las columnas a selecionar
-              (set): Conjunto de índices que indican por que columnas particionar la matriz
+            j (int, list, tuple): Índice (lista de índices) de las columnas a 
+                  selecionar
+              (set): Conjunto de índices de las columnas por donde particionar
 
         Resultado:
-            Vector: Si el parámetro j es int, devuelve la columna j-ésima de Matrix.
-            Matrix: Si el parámetro j es list o tuple, devuelve la Matrix formada por
-                las columnas indicadas en la lísta de índices.
-            BlockMatrix: Si el parámetro j es un set, devuelve la BlockMatrix que resulta de
-                particionar la matriz por las columnas indicadas por los índices del conjunto j
+            Vector: Cuando j es int, devuelve la columna j-ésima de Matrix.
+            Matrix: Cuando j es list o tuple, devuelve la Matrix formada por las
+                columnas indicadas en la lísta de índices.
+            BlockMatrix: Cuando j es un set, devuelve la BlockMatrix resultante
+                de particionar la matriz por las columnas indicadas
 
         Ejemplos:
         >>> # Extrae la j-ésima columna la matriz 
@@ -342,16 +352,17 @@ class Matrix:
 
         Vector([0,2])
 
-        >>> # Creación de Matrix formada por los Vectores columna indicados en una lista o tupla
+        >>> # Matrix formada por Vectores columna indicados en la lista (tupla)
         >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | [2,1]
         >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | (2,1)
 
         Matrix( [Vector([0,2]), Vector([1,0])] )
 
-        >>> # Creación de una BlockMatrix mediante el particionado de la matriz por columnas
+        >>> # BlockMatrix de la partición de la matriz por la segunda columna
         >>> Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) | {2}
 
-        BlockMatrix([[Matrix([Vector([1, 0]), Vector([0, 2])]), Matrix([Vector([3, 0])])]])
+        BlockMatrix( [ [ Matrix([Vector([1, 0]), Vector([0, 2])]), 
+                         Matrix([Vector([3, 0])]) ] ] )
         """
         if isinstance(j,int):
             return self.lista[j-1]
@@ -361,7 +372,6 @@ class Matrix:
             
         elif isinstance(j,set):
             return BlockMatrix ([ [self|a for a in particion(j,self.n)] ]) 
-
     def __invert__(self):
         """
         Devuelve la traspuesta de una matriz
@@ -373,21 +383,25 @@ class Matrix:
         """
 
         return Matrix ([ (self|j).lista for j in range(1,self.n+1) ])
-
+        
     def __ror__(self,i):
-        """
-        Extrae la i-ésima fila de Matrix (los índices comienzan por la posición 1)
+        """Operador selector por la izquierda
+
+        Extrae la i-ésima fila de Matrix; o crea una Matrix cuyas filas son las 
+        indicadas; o crea una BlockMatrix particionando una Matrix por las filas
+        indicadas (los índices comienzan por la posición 1)
 
         Parámetros:
-            i (int, list, tuple): Índice o lista de índices de las filas a selecionar
-              (set): Conjunto de índices que indican por que filas particionar la matriz
+            i (int, list, tuple): Índice (lista de índices) de las filas a 
+                 selecionar
+              (set): Conjunto de índices de las filas por donde particionar
 
         Resultado:
-            Vector: Si el parámetro i es int, devuelve la fila i-ésima de Matrix.
-            Matrix: Si el parámetro i es list o tuple, devuelve la Matrix cuyas filas coinciden
-                con las indicadas en la lísta de índices.
-            BlockMatrix: Si el parámetro i es un set, devuelve la BlockMatrix que resulta de
-                particionar la matriz por las filas indicadas por los índices del conjunto i
+            Vector: Cuando i es int, devuelve la fila i-ésima de Matrix.
+            Matrix: Cuando i es list o tuple, devuelve la Matrix cuyas filas son
+                las indicadas en la lísta de índices.
+            BlockMatrix: Cuando i es un set, devuelve la BlockMatrix resultante
+                de particionar la matriz por las filas indicadas
 
         Ejemplos:
         >>> # Extrae la j-ésima columna la matriz 
@@ -395,29 +409,30 @@ class Matrix:
 
         Vector([0, 2, 0])
 
-        >>> # Creación de Matrix formada por los Vectores columna indicados en una lista o tupla
+        >>> # Matrix formada por Vectores fila indicados en la lista (tupla)
         >>> [1,1] | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])]) 
         >>> (1,1) | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])])
 
         Matrix([Vector([1, 1]), Vector([0, 0]), Vector([3, 3])])
 
-        >>> # Creación de una BlockMatrix mediante el particionado de la matriz por columnas
+        >>> # BlockMatrix de la partició de la matriz por la primera fila
         >>> {1} | Matrix([Vector([1,0]), Vector([0,2])])
 
-        BlockMatrix([[Matrix([Vector([1]), Vector([0])])], [Matrix([Vector([0]), Vector([2])])]])
+        BlockMatrix( [ [Matrix([Vector([1]),Vector([0])])],
+                       [Matrix([Vector([0]),Vector([2])])] ] )
         """
+
         if isinstance(i,int):
             return Vector ( (~self)|i, rpr='fila' )
             
         elif isinstance(i, (list,tuple)):        
-            return Matrix ([ (a|self).lista  for a in i ])
+            return Matrix ( [ (a|self).lista  for a in i ] )
             
         elif isinstance(i,set):
             return BlockMatrix ([ [a|self] for a in particion(i,self.m) ])
 
     def __add__(self, other):
-        """
-        Función devuelve la Matrix resultante de sumar dos Matrix columna a columna
+        """Devuelve la Matrix resultante de sumar dos Matrices
 
         Parámetros: 
             other (Matrix): Otra Matrix con el mismo número de filas y columnas
@@ -429,42 +444,44 @@ class Matrix:
 
         Matrix( [Vector([1,2]), Vector([2,1])] )
         """
+
         if isinstance(other,Matrix) and self.m == other.m and self.n == other.n:
             return Matrix ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
         else:
             print("error en la suma: matrices con distinto orden")
     def __rmul__(self,x):
-        """
-        Multiplica una Matrix por un número a su izquierda.
+        """Multiplica una Matrix por un número a su izquierda.
 
         Parámetros:
             x (int, float o Fraction): Número por el que se multiplica
 
         Resultado:
-            Matrix: Devuelve la Matrix que resulta de multiplicar cada columna por x
+            Matrix: Devuelve el múltiplo de la Matrix
 
         Ejemplo:
         >>> 10 * Matrix([[1,2],[3,4]])
 
         Matrix([[10,20], [30,40]])
         """
+
         if isinstance(x, (int, float, Fraction)):
             return Matrix ([ x*(self|i) for i in range(1,self.n+1) ])
+
     def __mul__(self,x):
-        """
-        Multiplica una Matrix por un número o una Vector o una Matrix a su derecha.
+        """Multiplica una Matrix por un número, Vector o Matrix a su derecha
 
         Parámetros:
             x (int, float o Fraction): Número por el que se multiplica
-              (Vector): Vector con tantos componentes como columnas tiene Matrix.
-              (Matrix): con tantas filas como columnas tiene la Matrix.
+              (Vector): Vector con tantos componentes como columnas tiene Matrix
+              (Matrix): con tantas filas como columnas tiene la Matrix
 
         Resultado:
-            Matrix: Si el parámetro x es int, float o Fraction, devuelve la Matrix que resulta
-               de multiplicar cada columna por x
-            Vector: Si el parámetro x es Vector, devuelve Vector combinación lineal de las
-               columnas de Matrix (componentes del Vector son los coeficientes de la combinación)
-            Matrix: Si el parámetro x es Vector, devuelve el producto matricial entre matrices
+            Matrix: Si x es int, float o Fraction, devuelve la Matrix que 
+               resulta de multiplicar cada columna por x
+            Vector: Si x es Vector, devuelve el Vector combinación lineal de las
+               columnas de Matrix (los componentes del Vector son los 
+               coeficientes de la combinación)
+            Matrix: Si x es Matrix, devuelve el producto entre las matrices
                
         Ejemplos:
         >>> # Producto por un número
@@ -478,12 +495,11 @@ class Matrix:
         Vector([3, 7])
 
         >>> # Producto por otra Matrix
-        >>> A = Matrix([Vector([1, 3]), Vector([2, 4])])
-        >>> B = Matrix([Vector([1,1])]))
-        >>> A * B
+        >>> Matrix([Vector([1, 3]), Vector([2, 4])]) * Matrix([Vector([1,1])]))
 
         Matrix([Vector([3, 7])])
         """
+
         if isinstance(x, (int, float, Fraction)):
             return x*self
 
@@ -500,21 +516,25 @@ class Matrix:
                 print("error en producto: matrices incompatibles")
 
     def __eq__(self, other):
-        """A==B es True si A.lista es igual que B.lista. False en caso contrario"""
-
+        """Indica si es cierto que dos matrices son iguales"""
         return self.lista == other.lista
     def __and__(self,t):
-        """ Aplica una o una secuencia de transformaciones elementales por columnas: 
-        >>>  A & T({1,3})                 # intercambia las columnas 1 y 3
-        >>>  A & T((1,5))                 # multiplica la columna 1 por 5
-        >>>  A & T((1,2,5))               # suma a la columna 1 la 2 por 5
+        """Transforma las columnas de una Matrix
 
-        >>>  A & T([{1,3},(1,5),(1,2,5)]) # aplica la secuencia de transformaciones
+        Atributos:
+            t (T): trasformaciones a aplicar sobre las columnas de Matrix
+
+        Ejemplos:
+        >>>  A & T({1,3})                # intercambia las columnas 1 y 3
+        >>>  A & T((1,5))                # multiplica la columna 1 por 5
+        >>>  A & T((1,2,5))              # suma a la columna 1 la 2 por 5
+        >>>  A & T([{1,3},(1,5),(1,2,5)])# aplica la secuencia de transformaciones anteriores
         """
-        if isinstance(t.t,set) and len(t.t) == 2:
+
+        if isinstance(t.t,set):
             self.lista = Matrix( [(self|max(t.t)) if k==min(t.t) else \
-                                      (self|min(t.t)) if k==max(t.t) else \
-                                      (self|k) for k in range(1,self.n+1)]).lista
+                                  (self|min(t.t)) if k==max(t.t) else \
+                                  (self|k) for k in range(1,self.n+1)]).lista
 
         elif isinstance(t.t,tuple) and len(t.t) == 2:
              self.lista = Matrix([ t.t[1]*(self|k) if k==t.t[0] else (self|k) \
@@ -526,25 +546,29 @@ class Matrix:
         elif isinstance(t.t,list):
              for k in t.t:          
                  self & T(k)
-        return self
 
+        return self
     def __rand__(self,t):
-        """ Aplica una o una secuencia de transformaciones elementales por filas: 
+        """Transforma las filas de una Matrix
+
+        Atributos:
+            t (T): trasformaciones a aplicar sobre las filas de Matrix
+
+        Ejemplos:
         >>>    {1,3} & A               # intercambia las filas 1 y 3
         >>>    (1,5) & A               # multiplica la fila 1 por 5
         >>>  (1,2,5) & A               # suma a la fila 1 la 2 por 5
-        
         >>>  [(1,2,5),(1,5),{1,3}] & A # aplica la secuencia de transformaciones
         """
+
         if isinstance(t.t,set) | isinstance(t.t,tuple):
             self.lista = (~(~self & t)).lista
                   
         elif isinstance(t.t,list):
             for k in reversed(t.t):          
-                T(k) & self 
-
+                T(k) & self
+                
         return self
-
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'Matrix(' + repr(self.lista) + ')'
@@ -561,83 +585,53 @@ class Matrix:
                '\\end{bmatrix}' 
 
 class T:
-    """
-    Clase T
+    """Clase T
 
-    T es un objeto que denominamos tranformación elemental. Guarda en su atributo 't' una
-    transformación elemental o una secuencia de transformaciones elementales. Con el método
-    __and__ actua sobre otra T para crear una T composición de transformaciones elementales,
-    o actua sobre una Matrix para transformar sus filas
+    T es un objeto que denominaremos tranformación elemental. Guarda en su 
+    atributo 't' una abreviatura de una transformación elemental o una 
+    secuencia de abreviaturas de transformaciones elementales. Con el método
+    __and__ actua sobre otra T para crear una T que es composición de 
+    transformaciones elementales (la lista de abreviaturas), o actua sobre 
+    una Matrix (para transformar sus filas)
 
     Atributos:
-        t (set)  : Conjunto de dos enteros (índice, índice) para realizar un intercambio
-                     entre vectores correspondientes a dichos índices
-          (tuple): Tupla de dos elementos (índice, número) para realizar una transformación
-                     Tipo II que multiplica el vector correspondiente a índice por el número 
-                 : Tupla con tres elementos (índice1, índice2, número) para realizar una
-                     transformación Tipo I que suma al vector correspondiente a índice1 el
-                     vector correspondiente a índice2 multiplicado por el número
-          (list) : Lista con conjuntos y tuplas que describen una secuencia de
+        t (set)  : {índice, índice}. Abreviatura de un intercambio entre los 
+                     vectores correspondientes a dichos índices
+          (tuple): (índice, número). Abreviatura de transformación Tipo II 
+                     que multiplica el vector correspondiente al índice por 
+                     el número 
+                 : (índice1, índice2, número). Abreviatura de transformación 
+                     Tipo I que suma al vector correspondiente al índice1 el 
+                     vector correspondiente al índice2 multiplicado por el 
+                     número
+          (list) : Lista de conjuntos y tuplas. Secuencia de abreviaturas de
                      transformaciones como las anteriores.             
 
     Ejemplos:
     >>> # Intercambio entre vectores
     >>> T( {1,2} )
 
-    >>> # Trasformación Tipo II (multiplica por 5 es segundo vector)
+    >>> # Trasformación Tipo II (multiplica por 5 el segundo vector)
     >>> T( (2,5) )
 
-    >>> # Trasformación Tipo I (suma al primer vector el tercero multiplicado por -1)
+    >>> # Trasformación Tipo I (resta al primer vector el tercero)
     >>> T( (1,3,-1) )
 
     >>> # Secuencia de las tres transformaciones anteriores
     >>> T( [{1,2}, (2,5), (1,3,-1)] )
     """
     def __init__(self, t):
-        """
-        Inicializa una transformación elemental
-        """        
+        """Inicializa una transformación elemental"""        
         self.t = t
-    def __and__(self,t):
-        """
-        Crea una trasformación composición de dos
-        >>> T( {1, 2} ) & T( (2, 4) )
+    def __and__(self, other):
+        def CreaLista(t):
+            """Si t es una lista, devuelve t; si no devuelve la lista: [t]"""    
 
-        T( [{1,2}, (2,4)] )
+            return ( t if isinstance(t, list) else [t] )
+        if isinstance(other, T):
+            return T(CreaLista(self.t) + CreaLista(other.t))
 
-        Crea una trasformación composición de varias
-        >>> T( {1, 2} ) & T( [(2, 4), (1, 2), {3, 1}] )
-
-        T( [{1, 2}, (2, 4), (1, 2), {3, 1}] )
-
-        O aplica la transformación sobre las filas de una Matrix
-        >>> T( {1, 2} ) & A  # (intercambia las dos primeras filas de A)
-
-        O aplica una secuencia de transformaciones sobre las filas de una Matrix
-        >>> T( [{1,2}, (2,4)] ) & A # (intercambia las dos primeras filas de A y
-                                    # luego multiplica la segunda por 4)
-        """        
-
-        def CreaLista(a):
-            """
-            Transforma una tupla (un conjunto) en una lista que la (lo) contiene
-
-            Parámetros:
-                a (list) : lista que contiene tuplas y/o conjuntos
-                  (tuple): tupla que describe una transformación Tipo I o II
-                  (set)  : conjunto que describe un intercambio
-
-            Resultado:
-                 list : 'a'   cuando 'a' si a es list
-                        '[a]' cuando 'a' no es lista
-
-            """
-            return (a if isinstance(a,list) else [a])
-
-        if isinstance(t,T):
-            return T(CreaLista(self.t) + CreaLista(t.t))
-
-        if isinstance(t,Matrix):
+        if isinstance(other, Matrix):
             return t.__rand__(self)
 
 class BlockMatrix:
@@ -732,7 +726,7 @@ class V0(Vector):
     def __init__(self, n ,rpr = 'columna'):
         """ Inicializa el vector nulo de n componentes"""
 
-        super(self.__class__ ,self).__init__([0 for i in range(n)],rpr)
+        super(self.__class__ ,self).__init__([0 for i in range(n)], rpr)
 
 class M0(Matrix):
 
@@ -741,8 +735,7 @@ class M0(Matrix):
         if n is None:
             n = m
 
-        super(self.__class__ ,self).__init__( \
-                      [[0 for i in range(n)] for j in range(m)])
+        super(self.__class__ ,self).__init__([ V0(m) for j in range(n)])    
 
 class I(Matrix):
 
