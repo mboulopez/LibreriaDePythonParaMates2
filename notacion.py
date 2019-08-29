@@ -1,23 +1,4 @@
 # coding=utf8
-"""
-Librería para la asignatura Matemáticas II del grado en Economía de la UCM que sigue
-la notación de las notas de clase de Marcos Bujosa
-"""
-
-# Copyright (C) 2019  Marcor Bujosa
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
- 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/
 
 from fractions import Fraction
 
@@ -311,10 +292,11 @@ class Matrix:
                                   for j in range(sis.n) for k in range(1,(sis.ln[j])+1) ]
                                   
         elif not isinstance(sis, (str, list, tuple)):
-            raise ValueError('¡el argumento debe ser una lista (o tupla) de vectores, listas o tuplas; una BlockMatrix; o una Matrix!')
+            raise ValueError(\
+        '¡argumento: list (tuple) de Vectores (lists o tuples);  BlockMatrix; o Matrix!')
                                     
         elif isinstance(sis[0], (list, tuple)):
-            if not all ( (type(sis[0]) == type(v)) and (len(sis[0]) == len(v)) for v in iter(sis)):
+            if not all ( (type(sis[0])==type(v)) and (len(sis[0])==len(v)) for v in iter(sis) ):
                 raise ValueError('no todas son listas o no tienen la misma longitud!')
     
             self.lista  =  [ Vector([ sis[i][j] for i in range(len(sis   )) ]) \
@@ -632,12 +614,14 @@ class T:
             return T(CreaLista(self.t) + CreaLista(other.t))
 
         if isinstance(other, Matrix):
-            return t.__rand__(self)
+            return other.__rand__(self)
 
+    def __repr__(self):
+        """ Muestra T en su representación python """
+        return 'T(' + repr(self.t) + ')'
 class BlockMatrix:
     def __init__(self, sis):
-        """ Inicializa una matriz por bloques usando una lista de listas de matrices.
-        """        
+        """Inicializa una BlockMatrix con una lista de listas de matrices"""
         self.lista = list(sis)
         self.m     = len(sis)
         self.n     = len(sis[0])
@@ -713,7 +697,7 @@ def particion(s,n):
     return [ list(range(p[k]+1,p[k+1]+1)) for k in range(len(p)-1) ]
     
 def key(L):
-    """ genera el conjunto clave a partir de una secuencia de tamaños
+    """Genera el conjunto clave a partir de una secuencia de tamaños
     número
     >>> key([1,2,1])
 
@@ -745,19 +729,13 @@ class I(Matrix):
         super(self.__class__ ,self).__init__(\
                       [[(i==j)*1 for i in range(n)] for j in range(n)])
 
-class e(Vector):
-
-    def __init__(self, i,n ,rpr = 'columna'):
-        """ Inicializa el vector e_i  de tamaño n """
-
-        super(self.__class__ ,self).__init__([((i-1)==k)*1 for k in range(n)],rpr)
-
 
 class Normal(Matrix):
     def __init__(self, data):
-        """ Escalona por Gauss obteniendo una matriz cuyos pivotes son unos """
+        """Escalona por Gauss obteniendo una matriz cuyos pivotes son unos"""
         def pivote(v,k):
-            """ Devuelve el primer índice mayor que k de de un 
+            """
+            Devuelve el primer índice mayor que k de de un 
             un coeficiente no nulo del vector v. En caso de no existir
             devuelve 0
             """            
@@ -777,10 +755,9 @@ class Normal(Matrix):
 
            self.rank+=[r]
               
-        super(self.__class__ ,self).__init__(A.lista)
-        
+        super(self.__class__ ,self).__init__(A.lista)        
 def homogenea(A):
-     """ Devuelve una BlockMatriz con la solución del problema homogéneo """
+     """Devuelve una BlockMatriz con la solución del problema homogéneo"""
      stack=Matrix(BlockMatrix([[A],[I(A.n)]]))
      soluc=Normal(stack)
      col=soluc.rank[A.m-1]
