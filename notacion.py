@@ -5,11 +5,13 @@ from fractions import Fraction
 def html(TeX):
     """ Plantilla HTML para insertar comandos LaTeX """
     return "<p style=\"text-align:center;\">$" + TeX + "$</p>"
+    
 def latex(a):
      if isinstance(a,float) | isinstance(a,int):
          return str(a)
      else:
          return a.latex()
+         
 def _repr_html_fraction(self): 
     return html(self.latex())
 
@@ -21,6 +23,7 @@ def latex_fraction(self):
 
 setattr(Fraction, '_repr_html_', _repr_html_fraction)
 setattr(Fraction, 'latex', latex_fraction)
+
 
 class Vector:
     """Clase Vector
@@ -55,7 +58,6 @@ class Vector:
 
     Vector([1,2,3])
     """        
-
     def __init__(self, sis, rpr='columna'):
         """Inicializa un Vector con una lista, tupla, u otro Vector"""
 
@@ -98,7 +100,6 @@ class Vector:
 
         Vector([20, 10, 20])
         """
-
         if isinstance(i,int):
             return self.lista[i-1]
 
@@ -110,8 +111,8 @@ class Vector:
 
         Hace lo mismo que el método __or__ solo que operando por la izquierda
         """    
-
         return self | i
+        
     def __add__(self, other):
         """Devuelve el Vector resultante de sumar dos Vectores
 
@@ -122,8 +123,7 @@ class Vector:
         >>> Vector([10, 20, 30]) + Vector([-1, 1, 1])
 
         Vector([9, 21, 31])        
-        """
-        
+        """    
         if isinstance(other, Vector):
             if self.n == other.n:
                 return Vector ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
@@ -132,42 +132,30 @@ class Vector:
                 print("error en la suma: vectores con distinto número de componentes")
             
     def __rmul__(self, x):
-        """Multiplica un Vector por un número o Vector que estén a su izquierda
+        """Multiplica un Vector por un número a su izquierda
 
         Parámetros:
             x (int, float o Fraction): Número por el que se multiplica
-              (Vector): Vector con el mismo número de componentes.
 
         Resultado:
             Vector: Cuando x es int, float o Fraction, devuelve el Vector que 
                 resulta de multiplicar cada componente por x
-            Número: Cuando x es Vector, devuelve el producto punto entre 
-                vectores (producto escalar usual en R^n)
 
-        Ejemplos:
+        Ejemplo:
         >>> 3 * Vector([10, 20, 30]) 
 
         Vector([30, 60, 90])        
-
-        >>> Vector([1, 1, 1]) * Vector([10, 20, 30])
-
-        60
         """
         if isinstance(x, (int, float, Fraction)):
             return Vector ([ x*(self|i) for i in range(1,self.n+1) ])
 
-        elif isinstance(x, Vector): 
-            if self.n == x.n:
-                return sum([ (x|i)*(self|i) for i in range(1,self.n+1) ])
-            else:
-                print("error en producto: vectores con distinto número de componentes")
-
     def __mul__(self, x):
-        """Multiplica un Vector por un número o Matrix a su derecha.
+        """Multiplica un Vector por un número, Matrix o Vector a su derecha.
 
         Parámetros:
             x (int, float o Fraction): Número por el que se multiplica
               (Matrix): Matrix con tantas filas como componentes tiene el Vector
+              (Vector): Vector con el mismo número de componentes.
 
         Resultado:
             Vector: Cuando x es int, float o Fraction, devuelve el Vector que
@@ -175,6 +163,8 @@ class Vector:
                     Cuando x es Matrix, devuelve el Vector combinación lineal de
                las filas de Matrix (componentes del Vector son los coeficientes 
                de la combinación lineal)
+            Número: Cuando x es Vector, devuelve el producto punto entre 
+                vectores (producto escalar usual en R^n)
 
         Ejemplos:
         >>> Vector([10, 20, 30]) * 3
@@ -186,8 +176,11 @@ class Vector:
         >>> a * B
 
         Vector([3, 1, 11])
-        """
 
+        >>> Vector([1, 1, 1]) * Vector([10, 20, 30])
+
+        60
+        """
         if isinstance(x, (int, float, Fraction)):
             return x*self
 
@@ -197,9 +190,16 @@ class Vector:
             else:
                 print("error en producto: Vector y Matrix incompatibles")
 
+        elif isinstance(x, Vector): 
+            if self.n == x.n:
+                return sum([ (self|i)*(x|i) for i in range(1,self.n+1) ])
+            else:
+                print("error en producto: vectores con distinto número de componentes")
+
     def __eq__(self, other):
         """Indica si es cierto que dos vectores son iguales"""
         return self.lista == other.lista
+        
     def __repr__(self):
         """ Muestra el vector en su representación python """
         return 'Vector(' + repr(self.lista) + ')'
@@ -218,6 +218,7 @@ class Vector:
             return '\\begin{pmatrix}' + \
                    '\\\\'.join([latex(self|i) for i in range(1,self.n+1)]) + \
                    '\\end{pmatrix}'
+                   
 class Matrix:
     """Clase Matrix
 
@@ -267,11 +268,8 @@ class Matrix:
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
     """
-
     def __init__(self, sis):
         """Inicializa una Matrix"""
-
-        
         if isinstance(sis, Matrix):
             self.lista  =  sis.lista.copy()
 
@@ -283,13 +281,15 @@ class Matrix:
         elif not isinstance(sis, (str, list, tuple)):
             raise ValueError(\
         '¡argumento: list (tuple) de Vectores (lists o tuples);  BlockMatrix; o Matrix!')
+
                                     
         elif isinstance(sis[0], (list, tuple)):
             if not all ( (type(sis[0])==type(v)) and (len(sis[0])==len(v)) for v in iter(sis) ):
                 raise ValueError('no todas son listas o no tienen la misma longitud!')
     
             self.lista  =  [ Vector([ sis[i][j] for i in range(len(sis   )) ]) \
-                                                for j in range(len(sis[0])) ]                                                
+                                                for j in range(len(sis[0])) ]
+                                                
         
         elif isinstance(sis[0], Vector):
             if not all ( isinstance(v, Vector) and (sis[0].n == v.n) for v in iter(sis)):
@@ -299,6 +299,7 @@ class Matrix:
 
         self.m  =  self.lista[0].n
         self.n  =  len(self.lista)
+
     def __or__(self,j):
         """
         Extrae la i-ésima columna de Matrix; o crea una Matrix con las columnas
@@ -342,7 +343,8 @@ class Matrix:
             return Matrix ([ self|a for a in j ])
             
         elif isinstance(j,set):
-            return BlockMatrix ([ [self|a for a in particion(j,self.n)] ]) 
+            return BlockMatrix ([ [self|a for a in particion(j,self.n)] ])
+             
     def __invert__(self):
         """
         Devuelve la traspuesta de una matriz
@@ -352,7 +354,6 @@ class Matrix:
 
         Matrix([Vector([1, 2, 3])])
         """
-
         return Matrix ([ (self|j).lista for j in range(1,self.n+1) ])
         
     def __ror__(self,i):
@@ -392,7 +393,6 @@ class Matrix:
         BlockMatrix( [ [Matrix([Vector([1]),Vector([0])])],
                        [Matrix([Vector([0]),Vector([2])])] ] )
         """
-
         if isinstance(i,int):
             return Vector ( (~self)|i, rpr='fila' )
             
@@ -401,6 +401,7 @@ class Matrix:
             
         elif isinstance(i,set):
             return BlockMatrix ([ [a|self] for a in particion(i,self.m) ])
+            
 
     def __add__(self, other):
         """Devuelve la Matrix resultante de sumar dos Matrices
@@ -415,11 +416,11 @@ class Matrix:
 
         Matrix( [Vector([1,2]), Vector([2,1])] )
         """
-
         if isinstance(other,Matrix) and self.m == other.m and self.n == other.n:
             return Matrix ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
         else:
             print("error en la suma: matrices con distinto orden")
+            
     def __rmul__(self,x):
         """Multiplica una Matrix por un número a su izquierda.
 
@@ -434,7 +435,6 @@ class Matrix:
 
         Matrix([[10,20], [30,40]])
         """
-
         if isinstance(x, (int, float, Fraction)):
             return Matrix ([ x*(self|i) for i in range(1,self.n+1) ])
 
@@ -470,7 +470,6 @@ class Matrix:
 
         Matrix([Vector([3, 7])])
         """
-
         if isinstance(x, (int, float, Fraction)):
             return x*self
 
@@ -489,6 +488,7 @@ class Matrix:
     def __eq__(self, other):
         """Indica si es cierto que dos matrices son iguales"""
         return self.lista == other.lista
+        
     def __and__(self,t):
         """Transforma las columnas de una Matrix
 
@@ -501,7 +501,6 @@ class Matrix:
         >>>  A & T((1,2,5))              # suma a la columna 1 la 2 por 5
         >>>  A & T([{1,3},(1,5),(1,2,5)])# aplica la secuencia de transformaciones anteriores
         """
-
         if isinstance(t.t,set):
             self.lista = Matrix( [(self|max(t.t)) if k==min(t.t) else \
                                   (self|min(t.t)) if k==max(t.t) else \
@@ -519,6 +518,7 @@ class Matrix:
                  self & T(k)
 
         return self
+        
     def __rand__(self,t):
         """Transforma las filas de una Matrix
 
@@ -531,7 +531,6 @@ class Matrix:
         >>>  (1,2,5) & A               # suma a la fila 1 la 2 por 5
         >>>  [(1,2,5),(1,5),{1,3}] & A # aplica la secuencia de transformaciones
         """
-
         if isinstance(t.t,set) | isinstance(t.t,tuple):
             self.lista = (~(~self & t)).lista.copy()
                   
@@ -540,6 +539,7 @@ class Matrix:
                 T(k) & self
                 
         return self
+        
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'Matrix(' + repr(self.lista) + ')'
@@ -553,7 +553,8 @@ class Matrix:
         return '\\begin{bmatrix}' + \
                 '\\\\'.join(['&'.join([latex(i|self|j) for j in range(1,self.n+1) ]) \
                                                        for i in range(1,self.m+1) ]) + \
-               '\\end{bmatrix}' 
+               '\\end{bmatrix}'
+               
 
 class T:
     """Clase T
@@ -595,10 +596,12 @@ class T:
         """Inicializa una transformación elemental"""        
         self.t   = t
         self.rpr = rpr
+        
     def __and__(self, other):
         def CreaLista(t):
             """Si t es una lista, devuelve t; si no devuelve la lista: [t]"""    
             return ( t if isinstance(t, list) else [t] )
+            
         if isinstance(other, T):
             return T(CreaLista(self.t) + CreaLista(other.t), rpr=other.rpr)
 
@@ -642,6 +645,7 @@ class T:
                 return '\\underset{\\begin{array}{c}' + \
                   '\\\\'.join([simbolo(i) for i in self.t]) + \
                   '\\end{array}}{\\mathbf{\\tau}}'
+                  
 class BlockMatrix:
     def __init__(self, sis):
         """Inicializa una BlockMatrix con una lista de listas de matrices"""
@@ -732,23 +736,18 @@ def key(L):
 class V0(Vector):
     def __init__(self, n ,rpr = 'columna'):
         """ Inicializa el vector nulo de n componentes"""
-
         super(self.__class__ ,self).__init__([0 for i in range(n)], rpr)
 
 class M0(Matrix):
-
     def __init__(self, m, n=None):
         """ Inicializa una matriz nula de orden n """
-        if n is None:
-            n = m
+        n = m if n is None else n
 
         super(self.__class__ ,self).__init__([ V0(m) for j in range(n)])    
 
 class I(Matrix):
-
     def __init__(self, n):
         """ Inicializa la matriz identidad de tamaño n """
-
         super(self.__class__ ,self).__init__(\
                       [[(i==j)*1 for i in range(n)] for j in range(n)])
 
