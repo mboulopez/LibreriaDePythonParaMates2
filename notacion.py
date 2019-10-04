@@ -5,13 +5,12 @@ from fractions import Fraction
 def html(TeX):
     """ Plantilla HTML para insertar comandos LaTeX """
     return "<p style=\"text-align:center;\">$" + TeX + "$</p>"
-
 def latex(a):
      if isinstance(a,float) | isinstance(a,int):
          return str(a)
      else:
          return a.latex()
-def _repr_html_(self): 
+def _repr_html_fraction(self): 
     return html(self.latex())
 
 def latex_fraction(self):
@@ -20,18 +19,8 @@ def latex_fraction(self):
     else:
          return "\\frac{"+repr(self.numerator)+"}{"+repr(self.denominator)+"}"     
 
-setattr(Fraction, '_repr_html_', _repr_html_)
-setattr(Fraction, 'latex',        latex_fraction)
-
-def inverso(x):
-    if x==1 or x == -1:
-        return x
-    else:
-        y = 1/Fraction(x)
-        if y.denominator == 1:
-             return y.numerator
-        else:
-             return y
+setattr(Fraction, '_repr_html_', _repr_html_fraction)
+setattr(Fraction, 'latex', latex_fraction)
 
 class Vector:
     """Clase Vector
@@ -74,7 +63,7 @@ class Vector:
             self.lista  =  list(sis)
 
         elif isinstance(sis, Vector):
-            self.lista = sis.lista        
+            self.lista = sis.lista.copy()
 
         else:
             raise ValueError('¡el argumento: debe ser una lista, tupla o Vector!')
@@ -90,7 +79,7 @@ class Vector:
 
         Parámetros:
             i (int, list, tuple): Índice (lista de índices) de los elementos a 
-               selecionar
+               seleccionar
 
         Resultado:
             número: Cuando i es int, devuelve el componente i-ésimo del Vector.
@@ -98,7 +87,7 @@ class Vector:
                 componentes indicados en la lista de índices.
 
         Ejemplos:
-        >>> # Seleción de una componente
+        >>> # Selección de una componente
         >>> Vector([10,20,30]) | 2
 
         20
@@ -164,7 +153,6 @@ class Vector:
 
         60
         """
-
         if isinstance(x, (int, float, Fraction)):
             return Vector ([ x*(self|i) for i in range(1,self.n+1) ])
 
@@ -173,6 +161,7 @@ class Vector:
                 return sum([ (x|i)*(self|i) for i in range(1,self.n+1) ])
             else:
                 print("error en producto: vectores con distinto número de componentes")
+
     def __mul__(self, x):
         """Multiplica un Vector por un número o Matrix a su derecha.
 
@@ -242,7 +231,7 @@ class Matrix:
     bloques)
 
     Parámetros:
-        sis (list, tuple, Matrix, BlockMarix): Lista (o tupla) de Vectores 
+        sis (list, tuple, Matrix, BlockMatrix): Lista (o tupla) de Vectores 
             con el mismo núm. de componentes (columnas de la matriz); o 
             lista (o tupla) de listas o tuplas con el mismo núm. de 
             componentes (filas de la matriz); u otra Matrix; o una 
@@ -273,7 +262,7 @@ class Matrix:
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
 
-    >>> # Crea una Matrix a patir de una BlockMatrix
+    >>> # Crea una Matrix a partir de una BlockMatrix
     >>> Matrix( {1}|A|{2} )
 
     Matrix([Vector([1, 2]), Vector([1, 0]), Vector([9, 2])])
@@ -284,7 +273,7 @@ class Matrix:
 
         
         if isinstance(sis, Matrix):
-            self.lista  =  sis.lista
+            self.lista  =  sis.lista.copy()
 
         elif isinstance(sis, BlockMatrix):
             self.lista  =  [Vector([ sis.lista[i][j]|k|s  \
@@ -318,13 +307,13 @@ class Matrix:
 
         Parámetros:
             j (int, list, tuple): Índice (lista de índices) de las columnas a 
-                  selecionar
+                  seleccionar
               (set): Conjunto de índices de las columnas por donde particionar
 
         Resultado:
             Vector: Cuando j es int, devuelve la columna j-ésima de Matrix.
             Matrix: Cuando j es list o tuple, devuelve la Matrix formada por las
-                columnas indicadas en la lísta de índices.
+                columnas indicadas en la lista de índices.
             BlockMatrix: Cuando j es un set, devuelve la BlockMatrix resultante
                 de particionar la matriz por las columnas indicadas
 
@@ -375,13 +364,13 @@ class Matrix:
 
         Parámetros:
             i (int, list, tuple): Índice (lista de índices) de las filas a 
-                 selecionar
+                 seleccionar
               (set): Conjunto de índices de las filas por donde particionar
 
         Resultado:
             Vector: Cuando i es int, devuelve la fila i-ésima de Matrix.
             Matrix: Cuando i es list o tuple, devuelve la Matrix cuyas filas son
-                las indicadas en la lísta de índices.
+                las indicadas en la lista de índices.
             BlockMatrix: Cuando i es un set, devuelve la BlockMatrix resultante
                 de particionar la matriz por las filas indicadas
 
@@ -397,7 +386,7 @@ class Matrix:
 
         Matrix([Vector([1, 1]), Vector([0, 0]), Vector([3, 3])])
 
-        >>> # BlockMatrix de la partició de la matriz por la primera fila
+        >>> # BlockMatrix de la partición de la matriz por la primera fila
         >>> {1} | Matrix([Vector([1,0]), Vector([0,2])])
 
         BlockMatrix( [ [Matrix([Vector([1]),Vector([0])])],
@@ -504,7 +493,7 @@ class Matrix:
         """Transforma las columnas de una Matrix
 
         Atributos:
-            t (T): trasformaciones a aplicar sobre las columnas de Matrix
+            t (T): transformaciones a aplicar sobre las columnas de Matrix
 
         Ejemplos:
         >>>  A & T({1,3})                # intercambia las columnas 1 y 3
@@ -516,15 +505,15 @@ class Matrix:
         if isinstance(t.t,set):
             self.lista = Matrix( [(self|max(t.t)) if k==min(t.t) else \
                                   (self|min(t.t)) if k==max(t.t) else \
-                                  (self|k) for k in range(1,self.n+1)]).lista
+                                  (self|k) for k in range(1,self.n+1)]).lista.copy()
 
         elif isinstance(t.t,tuple) and len(t.t) == 2:
              self.lista = Matrix([ t.t[1]*(self|k) if k==t.t[0] else (self|k) \
-                                   for k in range(1,self.n+1)] ).lista
+                                   for k in range(1,self.n+1)] ).lista.copy()
                   
         elif isinstance(t.t,tuple) and len(t.t) == 3:
              self.lista = Matrix([ (self|k) + t.t[2]*(self|t.t[1]) if k==t.t[0] else \
-                                   (self|k) for k in range(1,self.n+1)] ).lista
+                                   (self|k) for k in range(1,self.n+1)] ).lista.copy()
         elif isinstance(t.t,list):
              for k in t.t:          
                  self & T(k)
@@ -534,7 +523,7 @@ class Matrix:
         """Transforma las filas de una Matrix
 
         Atributos:
-            t (T): trasformaciones a aplicar sobre las filas de Matrix
+            t (T): transformaciones a aplicar sobre las filas de Matrix
 
         Ejemplos:
         >>>    {1,3} & A               # intercambia las filas 1 y 3
@@ -544,7 +533,7 @@ class Matrix:
         """
 
         if isinstance(t.t,set) | isinstance(t.t,tuple):
-            self.lista = (~(~self & t)).lista
+            self.lista = (~(~self & t)).lista.copy()
                   
         elif isinstance(t.t,list):
             for k in reversed(t.t):          
@@ -569,11 +558,11 @@ class Matrix:
 class T:
     """Clase T
 
-    T es un objeto que denominaremos tranformación elemental. Guarda en su 
+    T es un objeto que denominaremos transformación elemental. Guarda en su 
     atributo 't' una abreviatura de una transformación elemental o una 
     secuencia de abreviaturas de transformaciones elementales. Con el método
-    __and__ actua sobre otra T para crear una T que es composición de 
-    transformaciones elementales (la lista de abreviaturas), o actua sobre 
+    __and__ actúa sobre otra T para crear una T que es composición de 
+    transformaciones elementales (la lista de abreviaturas), o actúa sobre 
     una Matrix (para transformar sus filas)
 
     Atributos:
@@ -602,16 +591,16 @@ class T:
     >>> # Secuencia de las tres transformaciones anteriores
     >>> T( [{1,2}, (2,5), (1,3,-1)] )
     """
-    def __init__(self, t):
+    def __init__(self, t, rpr='V'):
         """Inicializa una transformación elemental"""        
-        self.t = t
+        self.t   = t
+        self.rpr = rpr
     def __and__(self, other):
         def CreaLista(t):
             """Si t es una lista, devuelve t; si no devuelve la lista: [t]"""    
-
             return ( t if isinstance(t, list) else [t] )
         if isinstance(other, T):
-            return T(CreaLista(self.t) + CreaLista(other.t))
+            return T(CreaLista(self.t) + CreaLista(other.t), rpr=other.rpr)
 
         if isinstance(other, Matrix):
             return other.__rand__(self)
@@ -619,6 +608,40 @@ class T:
     def __repr__(self):
         """ Muestra T en su representación python """
         return 'T(' + repr(self.t) + ')'
+
+    def _repr_html_(self):
+        """ Construye la representación para el entorno jupyter notebook """
+        return html(self.latex())
+
+    def latex(self):
+        """ Construye el comando LaTeX """
+        def signo(v):
+            """Escribe '-' si el argumento es negativo y '+' en el resto de casos"""
+            return '-' if v<0 else '+'
+            
+        def simbolo(t):
+            """Escribe el símbolo que denota una trasformación elemental particular"""
+            if isinstance(t,set):
+                return '\\left[\\mathbf{' + latex(min(t)) + \
+                  '}\\rightleftharpoons\\mathbf{' + latex(max(t)) + '}\\right]'
+            if isinstance(t,tuple) and len(t) == 2:
+                return '\\left[' + \
+                  latex(t[1]) + '\\cdot\\mathbf{'+ latex(t[0]) + '}\\right]'
+            if isinstance(t,tuple) and len(t) == 3:
+                return '\\left[\\mathbf{' + latex(t[0]) + '}' + signo(t[2]) + \
+                  latex(t[2]) + '\\cdot\\mathbf{' + latex(t[1]) + '}\\right]'    
+
+        if isinstance(self.t, (set, tuple) ):
+            return '\\underset{' + simbolo(self.t) + '}{\\mathbf{\\tau}}'
+        elif isinstance(self.t, list):
+            if self.rpr == 'H':
+                return '\\,'.join([latex(T(i, rpr=self.rpr)) for i in self.t]) 
+            if self.rpr == 'Hfilas':
+                return '\\,'.join([latex(T(i, rpr=self.rpr)) for i in reversed(self.t)]) 
+            else:
+                return '\\underset{\\begin{array}{c}' + \
+                  '\\\\'.join([simbolo(i) for i in self.t]) + \
+                  '\\end{array}}{\\mathbf{\\tau}}'
 class BlockMatrix:
     def __init__(self, sis):
         """Inicializa una BlockMatrix con una lista de listas de matrices"""
@@ -652,11 +675,11 @@ class BlockMatrix:
 
 
     def __repr__(self):
-        """ Muestra una matriz en su representación python """
+        """ Muestra una matriz en su representación Python """
         return 'BlockMatrix(' + repr(self.lista) + ')'
 
     def _repr_html_(self):
-        """ Construye la representación para el  entorno jupyter notebook """
+        """ Construye la representación para el  entorno Jupyter Notebook """
         return html(self.latex())
 
     def latex(self):
@@ -749,9 +772,9 @@ class Normal(Matrix):
            p = pivote((i|A),r)
            if p > 0:
               r += 1
-              A & T({p,r})
-              A & T((r,inverso(i|A|r)))
-              A & T([(k, r, -(i|A|k)) for k in range(r+1,A.n+1)])
+              A & T( {p, r} )
+              A & T( (r, 1/Fraction(i|A|r)) )
+              A & T( [ (k, r, -(i|A|k)) for k in range(r+1,A.n+1)] )
 
            self.rank+=[r]
               
