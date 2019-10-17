@@ -376,7 +376,7 @@ class Matrix:
                 de particionar la matriz por las filas indicadas en el conjunto
 
         Ejemplos:
-        >>> # Extrae la j-ésima columna la matriz 
+        >>> # Extrae la j-ésima fila la matriz 
         >>> 2 | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])])
 
         Vector([0, 2, 0])
