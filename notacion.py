@@ -376,7 +376,7 @@ class Matrix:
                 de particionar la matriz por las filas indicadas en el conjunto
 
         Ejemplos:
-        >>> # Extrae la j-ésima fila la matriz 
+        >>> # Extrae la j-ésima fila de la matriz 
         >>> 2 | Matrix([Vector([1,0]), Vector([0,2]), Vector([3,0])])
 
         Vector([0, 2, 0])
@@ -517,7 +517,6 @@ class Matrix:
         elif isinstance(t.t,list):
              for k in t.t:          
                  self & T(k)
-
         return self
         
     def __rand__(self,t):
@@ -561,25 +560,26 @@ class Matrix:
 class T:
     """Clase T
 
-    T es un objeto que denominaremos transformación elemental. Guarda en su 
-    atributo 't' una abreviatura de una transformación elemental o una 
-    secuencia de abreviaturas de transformaciones elementales. Con el método
-    __and__ actúa sobre otra T para crear una T que es composición de 
-    transformaciones elementales (la lista de abreviaturas), o bien actúa 
+    T ("Transformación elemental") guarda en su atributo 't' una abreviatura
+    (o una secuencia de abreviaturas) de transformaciones elementales. Con 
+    el método __and__ actúa sobre otra T para crear una T que es composición
+    de transformaciones elementales (la lista de abreviaturas), o bien actúa 
     sobre una Matrix (para transformar sus filas)
 
     Atributos:
-        t (set)  : {índice, índice}. Abreviatura de un intercambio entre los 
+        t (set)  : {índice, índice}. Abrev. de un intercambio entre los 
                      vectores correspondientes a dichos índices
-          (tuple): (índice, número). Abreviatura de transformación Tipo II 
-                     que multiplica el vector correspondiente al índice por 
-                     el número 
-                 : (índice1, índice2, número). Abreviatura de transformación 
-                     Tipo I que suma al vector correspondiente al índice1 el 
-                     vector correspondiente al índice2 multiplicado por el 
-                     número
-          (list) : Lista de conjuntos y tuplas. Secuencia de abreviaturas de
+          (tuple): (índice, número). Abrev. transf. Tipo II que multiplica
+                     el vector correspondiente al índice por el número 
+                 : (índice1, índice2, número). Abrev. transformación Tipo I
+                     que suma al vector correspondiente al índice1 el vector
+                     correspondiente al índice2 multiplicado por el número
+          (list) : Lista de conjuntos y tuplas. Secuencia de abrev. de
                      transformaciones como las anteriores.             
+          (T)    : Transformación elemental. Genera una T cuyo atributo t es
+                     una copia del atributo t de la transformación dada 
+          (list) : Lista de transformaciones elementales. Genera una T cuyo 
+                     atributo es la concatenanción de todas las abreviaturas
     Ejemplos:
     >>> # Intercambio entre vectores
     >>> T( {1,2} )
@@ -592,12 +592,54 @@ class T:
 
     >>> # Secuencia de las tres transformaciones anteriores
     >>> T( [{1,2}, (2,5), (1,3,-1)] )
+
+    >>> # T de una T
+    >>> T( T( (2,5) ) )
+
+    T( (2,5) )
+
+    >>> # T de una lista de T's
+    >>> T( [T([(2, -8), (2, 1, 2)]), T([(3, -8), (3, 1, 3)]) ] )
+
+    T( [(2, -8), (2, 1, 2), (3, -8), (3, 1, 3)] )
     """
     def __init__(self, t):
-        """Inicializa una transformación elemental"""        
-        self.t   = t
+        """Inicializa una transformación elemental"""
+        if isinstance(t, T):
+            self.t = t.t
+
+        elif isinstance(t, list) and t and isinstance(t[0], T): 
+                self.t = [val for sublist in [x.t for x in t] for val in sublist]
+
+        else:
+            self.t = t
         
     def __and__(self, other):
+        """Composición de transformaciones elementales (o transformación filas)
+
+        Crea una T con una lista de abreviaturas de transformaciones elementales
+        (o llama al método que modifica las filas de una Matrix)
+
+        Parámetros:
+            (T): Crea la abreviatura de la composición de transformaciones, es
+                 decir, una lista de abreviaturas
+            (Matrix): Llama al método de la clase Matrix que modifica las filas
+                 de Matrix
+        Ejemplos:
+        >>> # Composición de dos Transformaciones elementales
+        >>> T( {1, 2} ) & T( (2, 4) )
+
+        T( [{1,2}, (2,4)] )
+
+        >>> # Composición de dos Transformaciones elementales
+        >>> T( {1, 2} ) & T( [(2, 4), (1, 2), {3, 1}] )
+
+        T( [{1, 2}, (2, 4), (1, 2), {3, 1}] )
+
+        >>> # Transformación de las filas de una Matrix
+        >>> T( [{1,2}, (2,4)] ) & A # multiplica por 4 la segunda fila de A y
+                                    # luego intercambia las dos primeras filas
+        """        
         def CreaLista(t):
             """Devuelve t si t es una lista; si no devuelve la lista [t]"""    
             return t if isinstance(t, list) else [t]
@@ -646,8 +688,7 @@ class BlockMatrix:
         self.m     = len(sis)
         self.n     = len(sis[0])
         self.lm    = [fila[0].m for fila in sis] 
-        self.ln    = [c.n for c in sis[0]]
-
+        self.ln    = [c.n for c in sis[0]] 
     def __or__(self,j):
         """ Reparticiona por columna una matriz por cajas """
         if isinstance(j,set):
@@ -706,7 +747,6 @@ class BlockMatrix:
               '\\right]'
 
 
-
 def particion(s,n):
     """ genera la lista de particionamiento a partir de un conjunto y un número
     >>> particion({1,3,5},7)
@@ -745,19 +785,74 @@ class I(Matrix):
                       [[(i==j)*1 for i in range(n)] for j in range(n)])
 
 
+def pivote(v, k=0):
+    """
+    Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
+    nulo del Vector v. En caso de no existir devuelve 0
+    """            
+    return ( [i for i,c in enumerate(v.lista, 1) if (c!=0 and i>k)] + [0] )[0]
+
+class L(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
+        A = Matrix(data)
+        r = 0
+        for i in range(1,A.m+1):
+           p = pivote((i|A),r)
+           if p > 0:
+              r += 1
+              A & T( {p, r} )
+              A & T( [(j, r, -Fraction((i|A|j),(i|A|r))) for j in range(r+1,A.n+1)] )
+              
+        super(self.__class__ ,self).__init__(A.lista)        
+
+class Lsd(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por columnas (sin div.)"""
+        A = Matrix(data)
+        r = 0
+        for i in range(1,A.m+1):
+           p = pivote((i|A),r)
+           if p > 0:
+              r += 1
+              A & T( {p, r} )
+              A & T([ T([(j, -(i|A|r)), (j, r, (i|A|j))]) for j in range(r+1,A.n+1)])
+              
+        super(self.__class__ ,self).__init__(A.lista)        
+
+class U(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
+        A = Matrix(data)
+        r = 0
+        for i in reversed(range(1,A.m+1)):
+           p = pivote( Vector((i|A).lista[::-1]), r)
+           if p > 0:
+              r += 1
+              A & T( {A.n-p+1, A.n-r+1} )
+              A & T( [ ( j, A.n-r+1, -Fraction((i|A|j),(i|A|(A.n-r+1))) ) \
+                                  for j in reversed(range(1,A.n-r+1)) ] )
+              
+        super(self.__class__ ,self).__init__(A.lista)        
+
+class Uf(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por filas (transf. Gauss)"""
+        A = Matrix(data)
+        r = 0
+        for j in range(1,A.n+1):
+           p = pivote((A|j),r)
+           if p > 0:
+              r += 1
+              T( {p, r} ) & A
+              T( [(i, r, -Fraction((i|A|j),(r|A|j))) for i in range(r+1,A.m+1)] ) & A 
+              
+        super(self.__class__ ,self).__init__(A.lista)        
+
 class Normal(Matrix):
     def __init__(self, data):
         """Escalona por Gauss obteniendo una matriz cuyos pivotes son unos"""
-        def pivote(v,k):
-            """
-            Devuelve el primer índice mayor que k de un coeficiente no
-            nulo del vector v. En caso de no existir devuelve 0
-            """            
-            return ([x[0] for x in enumerate(v.lista, 1) \
-                                if (x[1] !=0 and x[0] > k)]+[0])[0]
-
-        A = Matrix(data)
-        r = 0
+        A = Matrix(data); r = 0
         self.rank = []
         for i in range(1,A.n+1):
            p = pivote((i|A),r)
