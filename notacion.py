@@ -7,7 +7,7 @@ def html(TeX):
     return "<p style=\"text-align:center;\">$" + TeX + "$</p>"
     
 def latex(a):
-     if isinstance(a,float) | isinstance(a,int):
+     if isinstance(a,float) | isinstance(a,int) | isinstance(a,str):
          return str(a)
      else:
          return a.latex()
@@ -497,9 +497,9 @@ class Matrix:
 
         Ejemplos:
         >>>  A & T({1,3})                # Intercambia las columnas 1 y 3
-        >>>  A & T((1,5))                # Multiplica la columna 1 por 5
-        >>>  A & T((1,2,5))              # suma a la columna 1 la 2 por 5
-        >>>  A & T([{1,3},(1,5),(1,2,5)])# Aplica la secuencia de transformac.
+        >>>  A & T((5,1))                # Multiplica la columna 1 por 5
+        >>>  A & T((5,2,1))              # suma 5 veces la col. 2 a la col. 1
+        >>>  A & T([{1,3},(5,1),(5,2,1)])# Aplica la secuencia de transformac.
                      # sobre las columnas de A y en el mismo orden de la lista
         """
         if isinstance(t.t,set):
@@ -508,11 +508,11 @@ class Matrix:
                                   (self|k) for k in range(1,self.n+1)]).lista.copy()
 
         elif isinstance(t.t,tuple) and len(t.t) == 2:
-             self.lista = Matrix([ t.t[1]*(self|k) if k==t.t[0] else (self|k) \
+             self.lista = Matrix([ t.t[0]*(self|k) if k==t.t[1] else (self|k) \
                                    for k in range(1,self.n+1)] ).lista.copy()
                   
         elif isinstance(t.t,tuple) and len(t.t) == 3:
-             self.lista = Matrix([ (self|k) + t.t[2]*(self|t.t[1]) if k==t.t[0] else \
+             self.lista = Matrix([ t.t[0]*(self|t.t[1]) + (self|k) if k==t.t[2] else \
                                    (self|k) for k in range(1,self.n+1)] ).lista.copy()
         elif isinstance(t.t,list):
              for k in t.t:          
@@ -527,9 +527,9 @@ class Matrix:
 
         Ejemplos:
         >>>  T({1,3})   & A               # Intercambia las filas 1 y 3
-        >>>  T((1,5))   & A               # Multiplica la fila 1 por 5
-        >>>  T((1,2,5)) & A               # Suma a la fila 1 la 2 por 5
-        >>>  T([(1,2,5),(1,5),{1,3}]) & A # Aplica la secuencia de transformac.
+        >>>  T((5,1))   & A               # Multiplica por 5 la fila 1
+        >>>  T((5,2,1)) & A               # Suma 5 veces la fila 2 a la fila 1
+        >>>  T([(5,2,1),(5,1),{1,3}]) & A # Aplica la secuencia de transformac.
                     # sobre las filas de A y en el orden inverso al de la lista
         """
         if isinstance(t.t,set) | isinstance(t.t,tuple):
@@ -585,23 +585,23 @@ class T:
     >>> T( {1,2} )
 
     >>> # Trasformación Tipo II (multiplica por 5 el segundo vector)
-    >>> T( (2,5) )
+    >>> T( (5,2) )
 
-    >>> # Trasformación Tipo I (resta al primer vector el tercero)
-    >>> T( (1,3,-1) )
+    >>> # Trasformación Tipo I (resta el tercer vector al primero)
+    >>> T( (-1,3,1) )
 
     >>> # Secuencia de las tres transformaciones anteriores
-    >>> T( [{1,2}, (2,5), (1,3,-1)] )
+    >>> T( [{1,2}, (5,2), (-1,3,1)] )
 
     >>> # T de una T
-    >>> T( T( (2,5) ) )
+    >>> T( T( (5,5) ) )
 
-    T( (2,5) )
+    T( (5,2) )
 
     >>> # T de una lista de T's
-    >>> T( [T([(2, -8), (2, 1, 2)]), T([(3, -8), (3, 1, 3)]) ] )
+    >>> T( [T([(-8, 2), (2, 1, 2)]), T([(-8, 3), (3, 1, 3)]) ] )
 
-    T( [(2, -8), (2, 1, 2), (3, -8), (3, 1, 3)] )
+    T( [(-8, 2), (2, 1, 2), (-8, 3), (3, 1, 3)] )
     """
     def __init__(self, t):
         """Inicializa una transformación elemental"""
@@ -632,12 +632,12 @@ class T:
         T( [{1,2}, (2,4)] )
 
         >>> # Composición de dos Transformaciones elementales
-        >>> T( {1, 2} ) & T( [(2, 4), (1, 2), {3, 1}] )
+        >>> T( {1, 2} ) & T( [(2, 4), (2, 1), {3, 1}] )
 
-        T( [{1, 2}, (2, 4), (1, 2), {3, 1}] )
+        T( [{1, 2}, (2, 4), (2, 1), {3, 1}] )
 
         >>> # Transformación de las filas de una Matrix
-        >>> T( [{1,2}, (2,4)] ) & A # multiplica por 4 la segunda fila de A y
+        >>> T( [{1,2}, (4,2)] ) & A # multiplica por 4 la segunda fila de A y
                                     # luego intercambia las dos primeras filas
         """        
         def CreaLista(t):
@@ -660,26 +660,25 @@ class T:
 
     def latex(self):
         """ Construye el comando LaTeX """
-        def signo(v):
-            """Escribe '-' si el argumento es negativo y '+' en el resto de casos"""
-            return '-' if v<0 else '+'
-            
         def simbolo(t):
             """Escribe el símbolo que denota una trasformación elemental particular"""
             if isinstance(t,set):
                 return '\\left[\\mathbf{' + latex(min(t)) + \
                   '}\\rightleftharpoons\\mathbf{' + latex(max(t)) + '}\\right]'
             if isinstance(t,tuple) and len(t) == 2:
-                return '\\left[' + \
-                  latex(t[1]) + '\\cdot\\mathbf{'+ latex(t[0]) + '}\\right]'
+                return '\\left[\\left(' + \
+                  latex(t[0]) + '\\right)\\mathbf{'+ latex(t[1]) + '}\\right]'
             if isinstance(t,tuple) and len(t) == 3:
-                return '\\left[\\mathbf{' + latex(t[0]) + '}' + signo(t[2]) + \
-                  latex(t[2]) + '\\cdot\\mathbf{' + latex(t[1]) + '}\\right]'    
+                return '\\left[\\left(' + latex(t[0]) + '\\right)\\mathbf{' + \
+                  latex(t[1]) + '}' + '+\\mathbf{' + latex(t[2]) + '} \\right]'    
 
         if isinstance(self.t, (set, tuple) ):
             return '\\underset{' + simbolo(self.t) + '}{\\mathbf{\\tau}}'
+
         elif isinstance(self.t, list):
-            return '\\,'.join([latex(T(i)) for i in self.t]) 
+            return '\\underset{\\begin{subarray}{c} ' + \
+                  '\\\\'.join([simbolo(i) for i in self.t])  + \
+                  '\\end{subarray}}{\\mathbf{\\tau}}'
                   
 class BlockMatrix:
     def __init__(self, sis):
@@ -802,9 +801,34 @@ class L(Matrix):
            if p > 0:
               r += 1
               A & T( {p, r} )
-              A & T( [(j, r, -Fraction((i|A|j),(i|A|r))) for j in range(r+1,A.n+1)] )
+              A & T( [(Fraction(-(i|A|j),(i|A|r)), r, j) for j in range(r+1,A.n+1)] )
               
-        super(self.__class__ ,self).__init__(A.lista)        
+        super(self.__class__ ,self).__init__(A.lista)
+
+class LL(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
+        def PasosYEscritura(M,TE,cadena):
+            A & TE
+            cadena = cadena + '\\xrightarrow{' + latex(paso) + '}' + latex(A)
+            return cadena
+
+        A      = Matrix(data)
+        cadena = latex(Matrix(data))
+        r = 0
+        for i in range(1,A.m+1):
+           p = pivote((i|A),r)
+           if p > 0:
+              r   += 1 
+              paso = T( {p, r} )
+              if p != r: cadena = PasosYEscritura(A,paso,cadena)
+              paso = T([(Fraction(-(i|A|j),(i|A|r)),r,j) for j in range(r+1,A.n+1) \
+                                                                         if (i|A|j) ])
+              if paso.t: cadena = PasosYEscritura(A,paso,cadena)
+
+        self.cadena = cadena 
+
+        super(self.__class__ ,self).__init__(A.lista)
 
 class Lsd(Matrix):
     def __init__(self, data):
@@ -816,8 +840,33 @@ class Lsd(Matrix):
            if p > 0:
               r += 1
               A & T( {p, r} )
-              A & T([ T([(j, -(i|A|r)), (j, r, (i|A|j))]) for j in range(r+1,A.n+1)])
+              A & T([ T([(-(i|A|r), j), ((i|A|j), r, j)]) for j in range(r+1,A.n+1)])
               
+        super(self.__class__ ,self).__init__(A.lista)        
+
+class LLsd(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por columnas (sin div.)"""
+        def PasosYEscritura(M,TE,cadena):
+            A & TE
+            cadena = cadena + '\\xrightarrow{' + latex(paso) + '}' + latex(A)
+            return cadena
+
+        A = Matrix(data)
+        cadena = latex(Matrix(data))
+        r = 0
+        for i in range(1,A.m+1):
+           p = pivote((i|A),r)
+           if p > 0:
+              r += 1
+              paso = T( {p, r} )
+              if p != r: cadena = PasosYEscritura(A,paso,cadena)
+              paso = T([ T([(-(i|A|r), j), ((i|A|j), r, j)]) for j in range(r+1,A.n+1) \
+                                                                           if (i|A|j) ])
+              if paso.t: cadena = PasosYEscritura(A,paso,cadena)
+              
+        self.cadena = cadena 
+
         super(self.__class__ ,self).__init__(A.lista)        
 
 class U(Matrix):
@@ -830,7 +879,7 @@ class U(Matrix):
            if p > 0:
               r += 1
               A & T( {A.n-p+1, A.n-r+1} )
-              A & T( [ ( j, A.n-r+1, -Fraction((i|A|j),(i|A|(A.n-r+1))) ) \
+              A & T( [ (Fraction(-(i|A|j),(i|A|(A.n-r+1))), A.n-r+1, j ) \
                                   for j in reversed(range(1,A.n-r+1)) ] )
               
         super(self.__class__ ,self).__init__(A.lista)        
@@ -845,7 +894,7 @@ class Uf(Matrix):
            if p > 0:
               r += 1
               T( {p, r} ) & A
-              T( [(i, r, -Fraction((i|A|j),(r|A|j))) for i in range(r+1,A.m+1)] ) & A 
+              T( [(Fraction(-(i|A|j),(r|A|j)), r, i) for i in range(r+1,A.m+1)] ) & A 
               
         super(self.__class__ ,self).__init__(A.lista)        
 
@@ -859,8 +908,8 @@ class Normal(Matrix):
            if p > 0:
               r += 1
               A & T( {p, r} )
-              A & T( (r, 1/Fraction(i|A|r)) )
-              A & T( [ (k, r, -(i|A|k)) for k in range(r+1,A.n+1)] )
+              A & T( (1/Fraction(i|A|r), r) )
+              A & T( [ (-(i|A|k), r, k) for k in range(r+1,A.n+1)] )
 
            self.rank+=[r]
               
