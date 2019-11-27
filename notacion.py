@@ -791,7 +791,7 @@ def pivote(v, k=0):
     """            
     return ( [i for i,c in enumerate(v.lista, 1) if (c!=0 and i>k)] + [0] )[0]
 
-class L(Matrix):
+class GCL(Matrix):
     def __init__(self, data):
         """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
         A = Matrix(data)
@@ -808,29 +808,32 @@ class L(Matrix):
 class LL(Matrix):
     def __init__(self, data):
         """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
-        def PasosYEscritura(M,TE,cadena):
+        def PasosYEscritura(A,TE,cadena=str()):
+            """Aplica TE a la matriz A y escribe en LaTeX los pasos dados"""
             A & TE
-            cadena = cadena + '\\xrightarrow{' + latex(paso) + '}' + latex(A)
+            cadena = cadena + '\\xrightarrow{' + latex(TE) + '}' + latex(A)
             return cadena
-
         A      = Matrix(data)
-        cadena = latex(Matrix(data))
+        cadena = latex(data)
         r = 0
         for i in range(1,A.m+1):
            p = pivote((i|A),r)
            if p > 0:
-              r   += 1 
-              paso = T( {p, r} )
-              if p != r: cadena = PasosYEscritura(A,paso,cadena)
-              paso = T([(Fraction(-(i|A|j),(i|A|r)),r,j) for j in range(r+1,A.n+1) \
-                                                                         if (i|A|j) ])
-              if paso.t: cadena = PasosYEscritura(A,paso,cadena)
+              r += 1 
+              if p != r:                           # si realmente hay un intercambio
+                  cadena = PasosYEscritura(A, T({p,r}), cadena) 
+              
+              pasos = T([(Fraction(-(i|A|j),(i|A|r)),r,j) for j in range(r+1,A.n+1) \
+                                     if (i|A|j) ]) # aquellos que no eliminan "ceros"
+
+              if pasos.t:
+                  cadena = PasosYEscritura(A, pasos, cadena)
 
         self.cadena = cadena 
 
         super(self.__class__ ,self).__init__(A.lista)
 
-class Lsd(Matrix):
+class GCLsd(Matrix):
     def __init__(self, data):
         """Escalona una Matrix con eliminación por columnas (sin div.)"""
         A = Matrix(data)
@@ -847,29 +850,32 @@ class Lsd(Matrix):
 class LLsd(Matrix):
     def __init__(self, data):
         """Escalona una Matrix con eliminación por columnas (sin div.)"""
-        def PasosYEscritura(M,TE,cadena):
+        def PasosYEscritura(A,TE,cadena=str()):
+            """Aplica TE a la matriz A y escribe en LaTeX los pasos dados"""
             A & TE
-            cadena = cadena + '\\xrightarrow{' + latex(paso) + '}' + latex(A)
+            cadena = cadena + '\\xrightarrow{' + latex(TE) + '}' + latex(A)
             return cadena
-
-        A = Matrix(data)
-        cadena = latex(Matrix(data))
+        A      = Matrix(data)
+        cadena = latex(data)
         r = 0
         for i in range(1,A.m+1):
            p = pivote((i|A),r)
            if p > 0:
               r += 1
               paso = T( {p, r} )
-              if p != r: cadena = PasosYEscritura(A,paso,cadena)
+              if p != r:                           # si realmente hay un intercambio
+                  cadena = PasosYEscritura(A, T({p,r}), cadena)
               paso = T([ T([(-(i|A|r), j), ((i|A|j), r, j)]) for j in range(r+1,A.n+1) \
-                                                                           if (i|A|j) ])
-              if paso.t: cadena = PasosYEscritura(A,paso,cadena)
+                                     if (i|A|j) ]) # aquellos que no eliminan "ceros"
+
+              if paso.t:
+                  cadena = PasosYEscritura(A,paso,cadena)
               
         self.cadena = cadena 
 
         super(self.__class__ ,self).__init__(A.lista)        
 
-class U(Matrix):
+class GCU(Matrix):
     def __init__(self, data):
         """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
         A = Matrix(data)
@@ -881,6 +887,33 @@ class U(Matrix):
               A & T( {A.n-p+1, A.n-r+1} )
               A & T( [ (Fraction(-(i|A|j),(i|A|(A.n-r+1))), A.n-r+1, j ) \
                                   for j in reversed(range(1,A.n-r+1)) ] )
+              
+        super(self.__class__ ,self).__init__(A.lista)        
+
+class LaTeXGCU(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
+        def PasosYEscritura(A,TE,cadena=str()):
+            """Aplica TE a la matriz A y escribe en LaTeX los pasos dados"""
+            A & TE
+            cadena = cadena + '\\xrightarrow{' + latex(TE) + '}' + latex(A)
+            return cadena
+        A      = Matrix(data)
+        cadena = latex(data)
+        r = 0
+        for i in reversed(range(1,A.m+1)):
+           p = pivote( Vector((i|A).lista[::-1]), r)
+           if p > 0:
+              r += 1
+              if p != r:                           # si realmente hay un intercambio
+                  cadena = PasosYEscritura(A, T({A.n-p+1, A.n-r+1}), cadena)
+              
+              pasos = T([ (Fraction(-(i|A|j), (i|A|(A.n-r+1))), A.n-r+1, j ) \
+                         for j in reversed(range(1,A.n-r+1)) if (i|A|j)] )
+              if pasos.t:
+                  cadena = PasosYEscritura(A, pasos, cadena)
+
+        self.cadena = cadena 
               
         super(self.__class__ ,self).__init__(A.lista)        
 
