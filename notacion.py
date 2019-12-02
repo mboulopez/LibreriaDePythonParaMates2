@@ -854,7 +854,7 @@ class GCL(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
@@ -864,29 +864,24 @@ class GCL(Matrix):
                 elif isinstance (data, BlockMatrix):
                      tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
             return tex
-        A     = Matrix(data)
-        pasos = []
-        r     = 0
+        A = Matrix(data); pasos = []; r = 0
         for i in range(1,A.m+1):
-           p = pivote((i|A),r)
-           if p > 0:
-              r += 1
-              
-              Tr = T( [ {p, r} ] )
-              pasos += [Tr]
-              A & T( Tr )
-
-              Tr = T( [(Fraction(-(i|A|j),(i|A|r)), r, j) for j in range(r+1,A.n+1)] )
-              pasos += [Tr]  if Tr.t else []
-              A & T( Tr )
-
+            p = pivote((i|A),r)
+            if p > 0:
+                r += 1
+                
+                Tr = T([ {p, r} ])
+                pasos += [Tr]
+                A & T( Tr )
+                Tr = T([(Fraction(-(i|A|j),(i|A|r)), r, j) for j in range(r+1,A.n+1)])
+                pasos += [Tr]  if Tr.t else []
+                A & T( Tr )
         pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else []
         TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
         self.tex     = PasosYEscritura(data, pasos, TexPasosPrev)
         if rep:  
-                from IPython.display import display, Math
-                display(Math(self.tex))
-
+            from IPython.display import display, Math
+            display(Math(self.tex))
         self.rank  = r 
         self.pasos = pasosPrevios + pasos 
         super(self.__class__ ,self).__init__(A.lista)
@@ -900,7 +895,7 @@ class GCLsd(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
@@ -910,9 +905,7 @@ class GCLsd(Matrix):
                 elif isinstance (data, BlockMatrix):
                      tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
             return tex
-        A     = Matrix(data)
-        pasos = []
-        r     = 0
+        A = Matrix(data); pasos = []; r = 0
         for i in range(1,A.m+1):
            p = pivote((i|A),r)
            if p > 0:
@@ -921,20 +914,17 @@ class GCLsd(Matrix):
               Tr = T( [ {p, r} ] )
               pasos += [Tr]
               A & T( Tr )
-
               Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|r)).denominator, j),     \
                              (-Fraction((i|A|j),(i|A|r)).numerator, r, j) ] ) \
                                                         for j in range(r+1,A.n+1) ] )
               pasos += [Tr]  if Tr.t else []
               A & T( Tr )
-
         pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else []
         TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
         self.tex     = PasosYEscritura(data, pasos, TexPasosPrev)
         if rep:  
-                from IPython.display import display, Math
-                display(Math(self.tex))
-
+            from IPython.display import display, Math
+            display(Math(self.tex))
         self.rank  = r 
         self.pasos = pasosPrevios + pasos 
         super(self.__class__ ,self).__init__(A.lista)
@@ -948,7 +938,7 @@ class GCLN(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
@@ -958,33 +948,26 @@ class GCLN(Matrix):
                 elif isinstance (data, BlockMatrix):
                      tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
             return tex
-        A     = Matrix(data)
-        pasos = []
-        r     = 0
+        A = Matrix(data); pasos = []; r = 0
         for i in range(1,A.m+1):
            p = pivote((i|A),r)
            if p > 0:
               r += 1
-
               Tr = T( [ {p, r} ] )
               pasos += [Tr]
               A & T( Tr )
-
               Tr = T( [ (Fraction(1,(i|A|r)), r) ] )
               pasos += [Tr] 
               A & T( Tr )
-
               Tr = T( [(-(i|A|j), r, j) for j in range(r+1,A.n+1)] )
               pasos += [Tr]  if Tr.t else []
               A & T( Tr )
-
         pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else []
         TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
         self.tex     = PasosYEscritura(data, pasos, TexPasosPrev)
         if rep:  
-                from IPython.display import display, Math
-                display(Math(self.tex))
-
+            from IPython.display import display, Math
+            display(Math(self.tex))
         self.rank  = r 
         self.pasos = pasosPrevios + pasos 
         super(self.__class__ ,self).__init__(A.lista)
@@ -998,7 +981,7 @@ class GCU(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
@@ -1008,30 +991,24 @@ class GCU(Matrix):
                 elif isinstance (data, BlockMatrix):
                      tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
             return tex
-        A     = Matrix(data)
-        pasos = []
-        r     = 0
+        A = Matrix(data); pasos = []; r = 0
         for i in reversed(range(1,A.m+1)):
            p = pivote(reversed(i|A), r)
            if p > 0:
-              r += 1
-              
+              r += 1          
               Tr = T( [ {A.n-p+1, A.n-r+1} ] )
               pasos += [Tr] 
-              A & T( Tr );
-              
+              A & T( Tr );            
               Tr = T([ (Fraction(-(i|A|j), (i|A|(A.n-r+1))), A.n-r+1, j) \
                                      for j in reversed(range(1,A.n-r+1)) ] )
               pasos += [Tr] if Tr.t else []
               A & T( Tr )
-
         pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else []
         TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
         self.tex     = PasosYEscritura(data, pasos, TexPasosPrev)
         if rep:  
-                from IPython.display import display, Math
-                display(Math(self.tex))
-
+            from IPython.display import display, Math
+            display(Math(self.tex))
         self.rank  = r 
         self.pasos = pasosPrevios + pasos 
         super(self.__class__ ,self).__init__(A.lista)
@@ -1045,7 +1022,7 @@ class GCUN(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
@@ -1055,9 +1032,7 @@ class GCUN(Matrix):
                 elif isinstance (data, BlockMatrix):
                      tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
             return tex
-        A     = Matrix(data)
-        pasos = []
-        r = 0
+        A = Matrix(data); pasos = []; r = 0
         for i in reversed(range(1,A.m+1)):
            p = pivote(reversed(i|A), r)
            if p > 0:
@@ -1071,14 +1046,12 @@ class GCUN(Matrix):
               Tr = T([ (-(i|A|j), A.n-r+1, j) for j in reversed(range(1,A.n-r+1)) ] )
               pasos += [Tr] if Tr.t else []
               A & T( Tr )
-
         pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else []
         TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
         self.tex     = PasosYEscritura(data, pasos, TexPasosPrev)
         if rep:  
-                from IPython.display import display, Math
-                display(Math(self.tex))
-
+            from IPython.display import display, Math
+            display(Math(self.tex))
         self.rank  = r 
         self.pasos = pasosPrevios + pasos 
         super(self.__class__ ,self).__init__(A.lista)
@@ -1092,7 +1065,7 @@ class GCUsd(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
@@ -1102,36 +1075,27 @@ class GCUsd(Matrix):
                 elif isinstance (data, BlockMatrix):
                      tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
             return tex
-        A     = Matrix(data)
-        pasos = []
-        r = 0
+        A = Matrix(data); pasos = []; r = 0
         for i in reversed(range(1,A.m+1)):
            p = pivote(reversed(i|A), r)
            if p > 0:
-              r += 1
-
-              Tr = T( [ {A.n-p+1, A.n-r+1} ] )
-              pasos += [Tr] 
+              r += 1;  Tr = T( [ {A.n-p+1, A.n-r+1} ] );  pasos += [Tr] 
               A & T( Tr )
-
               Tr = T( [ T( \
                    [ ( Fraction((i|A|j),(i|A|(A.n-r+1))).denominator, j),         \
                      (-Fraction((i|A|j),(i|A|(A.n-r+1))).numerator, A.n-r+1, j) ] \
                          ) for j in reversed(range(1,A.n-r+1)) ] )
               pasos += [Tr] if Tr.t else []
               A & T( Tr )
-
         pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else []
         TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
         self.tex     = PasosYEscritura(data, pasos, TexPasosPrev)
         if rep:  
-                from IPython.display import display, Math
-                display(Math(self.tex))
-
-        self.rank  = r
+            from IPython.display import display, Math
+            display(Math(self.tex))
+        self.rank  = r 
         self.pasos = pasosPrevios + pasos 
         super(self.__class__ ,self).__init__(A.lista)
-
 
 class Uf(Matrix):
     def __init__(self, data):
@@ -1156,7 +1120,7 @@ class NormDiag(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
@@ -1207,7 +1171,7 @@ class Inversa(Matrix):
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
                                                                            for i in pasos ]                 
-            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abreviaturas vacías
             A   = Matrix(data)
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for i in range(0,len(p)):
