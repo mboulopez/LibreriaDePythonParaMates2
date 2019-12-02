@@ -833,31 +833,16 @@ class GaussCLsd(Matrix):
 
         super(self.__class__ ,self).__init__(A.lista)        
 
-class GaussGCU(Matrix):
+class GaussCU(Matrix):
     def __init__(self, data):
         """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
-        B = Matrix(data)
-        A = Matrix.flipud(reversed( GCL(Matrix.flipud(reversed( B ))) ))
+        A = Matrix.flipud(reversed( GaussCL(Matrix.flipud(reversed( Matrix(data) )))))
         super(self.__class__ ,self).__init__(A.lista)        
 
 class GaussFU(Matrix):
     def __init__(self, data):
         """Escalona una Matrix con eliminación por filas (transf. Gauss)"""
-        A = ~GCL(~Matrix(data))
-        super(self.__class__ ,self).__init__(A.lista)        
-
-class Uf(Matrix):
-    def __init__(self, data):
-        """Escalona una Matrix con eliminación por filas (transf. Gauss)"""
-        A = Matrix(data)
-        r = 0
-        for j in range(1,A.n+1):
-           p = pivote((A|j),r)
-           if p > 0:
-              r += 1
-              T( {p, r} ) & A
-              T( [(Fraction(-(i|A|j),(r|A|j)), r, i) for i in range(r+1,A.m+1)] ) & A 
-              
+        A = ~GaussCL(~Matrix(data))
         super(self.__class__ ,self).__init__(A.lista)        
 
 class GCL(Matrix):
@@ -1147,6 +1132,21 @@ class GCUsd(Matrix):
         self.pasos = pasosPrevios + pasos 
         super(self.__class__ ,self).__init__(A.lista)
 
+
+class Uf(Matrix):
+    def __init__(self, data):
+        """Escalona una Matrix con eliminación por filas (transf. Gauss)"""
+        A = Matrix(data)
+        r = 0
+        for j in range(1,A.n+1):
+           p = pivote((A|j),r)
+           if p > 0:
+              r += 1
+              T( {p, r} ) & A
+              T( [(Fraction(-(i|A|j),(r|A|j)), r, i) for i in range(r+1,A.m+1)] ) & A 
+              
+        super(self.__class__ ,self).__init__(A.lista)        
+
 class NormDiag(Matrix):
     def __init__(self, data, rep=0):
         """Normaliza a uno los componentes no nulos de la diagonal principal"""
@@ -1198,32 +1198,36 @@ class Normal(Matrix):
            self.rank+=[r]
               
         super(self.__class__ ,self).__init__(A.lista)        
-def inversa(A,rep=0):
-     """Devuelve la matriz inversa"""
-     def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-         """Escribe en LaTeX los pasos efectivos dados"""
-         p = [ T([j for j in i.t if (isinstance(j,set) and len(j)>1) \
-                                 or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
-                                 or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
-                                                                        for i in pasos ]                 
-         p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
-         A   = Matrix(data)
-         tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-         for i in range(0,len(p)):
-             tex += '\\xrightarrow{' + latex(p[i]) + '}'
-             if isinstance (data, Matrix):
-                  tex += latex( A & p[i] )
-             elif isinstance (data, BlockMatrix):
-                  tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
-         return tex
-     soluc = NormDiag(GCL(GCU(A)))
-     stack = BlockMatrix([[A],[I(A.n)]])
-     tex   = PasosYEscritura(stack, soluc.pasos)
-     if rep:
-         from IPython.display import display, Math
-         display(Math(tex))
+class Inversa(Matrix):
+    def __init__(self, data, rep=0):
+        """Devuelve la matriz inversa y los pasos de eliminación dados para obtenerla"""
+        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+            """Escribe en LaTeX los pasos efectivos dados"""
+            p = [ T([j for j in i.t if (isinstance(j,set) and len(j)>1) \
+                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0) \
+                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ]) \
+                                                                           for i in pasos ]                 
+            p   = [ t for t in p if len(t.t)!=0]  # quitamos abrev vacías
+            A   = Matrix(data)
+            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+            for i in range(0,len(p)):
+                tex += '\\xrightarrow{' + latex(p[i]) + '}'
+                if isinstance (data, Matrix):
+                     tex += latex( A & p[i] )
+                elif isinstance (data, BlockMatrix):
+                     tex += latex( key(data.lm)|(A & p[i])|key(data.ln) )
+            return tex
+        A     = Matrix(data)
+        Id    = NormDiag(GCL(GCU(A)))
+        stack = BlockMatrix([[A],[I(A.n)]])
+        self.tex   = PasosYEscritura(stack, Id.pasos)
+        if rep:
+           from IPython.display import display, Math
+           display(Math(self.tex))
 
-     return I(A.n) & T(soluc.pasos)  
+        Inv        = I(A.n) & T(Id.pasos)  
+        self.pasos = Id.pasos 
+        super(self.__class__ ,self).__init__(Inv.lista)
 
 
 def homogenea(A):
