@@ -658,6 +658,10 @@ class T:
         if isinstance(other, Matrix):
             return other.__rand__(self)
 
+    def __invert__(self):
+        
+        return T([ ~j if isinstance(j, T) else j for j in list(reversed(self.t)) ])
+        
     def __repr__(self):
         """ Muestra T en su representación python """
         return 'T(' + repr(self.t) + ')'
