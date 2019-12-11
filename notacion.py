@@ -558,7 +558,7 @@ class Matrix:
         return '\\begin{bmatrix}' + \
                 '\\\\'.join(['&'.join([latex(i|self|j) for j in range(1,self.n+1) ]) \
                                                        for i in range(1,self.m+1) ]) + \
-               '\\end{bmatrix}'
+               '\\end{bmatrix}' if self.lista else '\\begin{bmatrix}\\ \\end{bmatrix}'
                
     def __reversed__(self):
         """Devuelve el reverso de una Matrix"""
@@ -666,6 +666,16 @@ class T:
         """Invierte el orden de la lista de abreviaturas"""
         return T( list(reversed(self.t)) ) if isinstance(self.t, list) else self
         
+    def inversa(self):
+        """Devuelve la inversa de [[T]]"""
+        def CreaLista(t):
+            """Devuelve t si t es una lista; si no devuelve la lista [t]"""
+            return t if isinstance(t, list) else [t]
+            
+        return ~T([ (-j[0],j[1],j[2])       if (isinstance(j,tuple) and len(j)==3) else \
+                    (Fraction(1,j[0]),j[1]) if (isinstance(j,tuple) and len(j)==2) else \
+                    j                                       for j in CreaLista(self.t) ])
+        
     def __repr__(self):
         """ Muestra T en su representación python """
         return 'T(' + repr(self.t) + ')'
@@ -696,16 +706,6 @@ class T:
                   '\\\\'.join([simbolo(i) for i in self.t])  + \
                   '\\end{subarray}}{\\mathbf{\\tau}}'
                   
-    def inversa(self):
-        """Devuelve la inversa de [[T]]"""
-        def CreaLista(t):
-            """Devuelve t si t es una lista; si no devuelve la lista [t]"""
-            return t if isinstance(t, list) else [t]
-            
-        return ~T([ (-j[0],j[1],j[2])       if (isinstance(j,tuple) and len(j)==3) else \
-                    (Fraction(1,j[0]),j[1]) if (isinstance(j,tuple) and len(j)==2) else \
-                    j                                             for j in CreaLista(self.t) ])
-        
 class BlockMatrix:
     def __init__(self, sis):
         """Inicializa una BlockMatrix con una lista de listas de matrices"""
@@ -1414,15 +1414,30 @@ class Inversa(Matrix):
             return tex
 
         A     = Matrix(data)
-        Id    = ECUN(ECL(A))
+
+        if A.m != A.n:
+            print('La matriz no es cuadrada, así que no tiene inversa')
+            return
+
+        L = ECL(A)
+        if L.rank < A.n:
+            print('La matriz es singular, así que no tiene inversa')
+            self.lista = []
+            if rep:
+                stack = BlockMatrix([[A],[I(A.n)]])
+                from IPython.display import display, Math
+                display(Math(PasosYEscritura(stack, L.pasos)))
+            return None
+
+        M  = ECUN(L)
         stack = BlockMatrix([[A],[I(A.n)]])
-        self.tex   = PasosYEscritura(stack, Id.pasos)
+        self.tex   = PasosYEscritura(stack, M.pasos)
         if rep:
            from IPython.display import display, Math
            display(Math(self.tex))
 
-        Inv        = I(A.n) & T(Id.pasos[1])  
-        self.pasos = Id.pasos 
+        Inv        = I(A.n) & T(M.pasos[1])  
+        self.pasos = M.pasos 
         super(self.__class__ ,self).__init__(Inv.lista)
 
 class InversaF(Matrix):
