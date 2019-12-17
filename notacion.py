@@ -1559,6 +1559,24 @@ class InvMatFC(Matrix):
         self.pasos = Id.pasos 
         super(self.__class__ ,self).__init__(Inv.lista)
 
+class Sistema:
+    def __init__(self, data):
+        """Inicializa un Sistema"""
+        self.lista = list(data)
+
+    def __repr__(self):
+        """ Muestra una Sistema en su representación python """
+        return '[' + repr(self.lista) + ']'
+
+    def _repr_html_(self):
+        """ Construye la representación para el  entorno jupyter notebook """
+        return html(self.latex())
+
+    def latex(self):
+        """ Construye el comando LaTeX """
+        return '\\left[' + \
+            ',\;'.join([latex(self.lista[i]) for i in range(0,len(self.lista))]) + \
+            '\\right]'
 class EspacioNulo:
     def __init__(self, data, rep=0):
         """Describe el espacio nulo de una matriz y los pasos para encontrarlo"""
@@ -1593,16 +1611,14 @@ class EspacioNulo:
         L     = ECL(A)
         E     = I(A.n) & T(L.pasos[1])
         
-        self.base  = list([Vector(E|j) for j in range(L.rank+1, L.n+1)])
-
-        stack = BlockMatrix([[A],[I(A.n)]])
-        self.tex   = PasosYEscritura(stack, L.pasos)
+        self.base  = Sistema([Vector(E|j) for j in range(L.rank+1, L.n+1)])
+        self.tex   = PasosYEscritura(BlockMatrix([[A],[I(A.n)]]), L.pasos)
         if rep:
            from IPython.display import display, Math
            display(Math(self.tex))
 
     def __repr__(self):
-        """ Muestra una matriz en su representación python """
+        """ Muestra el Espacio Nulo de una matriz en su representación python """
         return 'Combinaciones lineales de {' + repr(self.base) + '}'
 
     def _repr_html_(self):
@@ -1611,9 +1627,10 @@ class EspacioNulo:
 
     def latex(self):
         """ Construye el comando LaTeX """
-        return '\\text{Conjunto de combinaciones lineales de }\\left\\{' + \
-            ';\;'.join([latex(self.base[i]) for i in range(0,len(self.base))]) + \
-            '\\right\\}'
+        return latex(self.base)
+        #'\\text{Conjunto de combinaciones lineales de }\\left\\{' + \
+        #    ';\;'.join([latex(self.base.lista|j) for j in range(1,len(self.base.lista)+1)]) + \
+        #    '\\right\\}'
            
 class Normal(Matrix):
     def __init__(self, data):
