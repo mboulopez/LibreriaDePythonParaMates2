@@ -1564,6 +1564,10 @@ class Sistema:
         """Inicializa un Sistema"""
         self.lista = list(data)
 
+    def __len__(self):
+        """Número de elementos del sistema"""
+        return len(self.lista)
+        
     def __repr__(self):
         """ Muestra una Sistema en su representación python """
         return '[' + repr(self.lista) + ']'
@@ -1627,10 +1631,9 @@ class EspacioNulo:
 
     def latex(self):
         """ Construye el comando LaTeX """
-        return latex(self.base)
-        #'\\text{Conjunto de combinaciones lineales de }\\left\\{' + \
-        #    ';\;'.join([latex(self.base.lista|j) for j in range(1,len(self.base.lista)+1)]) + \
-        #    '\\right\\}'
+        return '\\text{Conjunto de combinaciones lineales de }\\left\\{' + \
+            ';\;'.join([latex(self.base.lista[i]) for i in range(0,len(self.base))]) + \
+            '\\right\\}'
            
 class Normal(Matrix):
     def __init__(self, data):
