@@ -126,11 +126,9 @@ class Vector:
         Vector([9, 21, 31])        
         """    
         if isinstance(other, Vector):
-            if self.n == other.n:
-                return Vector ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
-
-            else:
-                print("error en la suma: vectores con distinto número de componentes")
+            if self.n != other.n:
+                raise ValueError('Vectores con distinto número de componentes')
+            return Vector ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
             
     def __rmul__(self, x):
         """Multiplica un Vector por un número a su izquierda
@@ -186,16 +184,14 @@ class Vector:
             return x*self
 
         elif isinstance(x, Matrix):
-            if self.n == x.m:
-                return Vector( (~x)*self, rpr='fila' )
-            else:
-                print("error en producto: Vector y Matrix incompatibles")
+            if self.n != x.m:
+                raise ValueError('Vector y Matrix incompatibles')
+            return Vector( (~x)*self, rpr='fila' )
 
         elif isinstance(x, Vector): 
-            if self.n == x.n:
-                return sum([ (self|i)*(x|i) for i in range(1,self.n+1) ])
-            else:
-                print("error: vectores con distinto número de componentes")
+            if self.n != x.n:
+                raise ValueError('Vectores con distinto número de componentes')
+            return sum([ (self|i)*(x|i) for i in range(1,self.n+1) ])
 
     def __eq__(self, other):
         """Indica si es cierto que dos vectores son iguales"""
@@ -420,10 +416,11 @@ class Matrix:
 
         Matrix( [Vector([1,2]), Vector([2,1])] )
         """
-        if isinstance(other,Matrix) and self.m == other.m and self.n == other.n:
-            return Matrix ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
-        else:
-            print("error en la suma: matrices con distinto orden")
+        if not isinstance(other,Matrix):
+            raise ValueError('A una Matrix solo se le puede sumar otra Matrix')
+        if (self.m,self.n) != (other.m,other.n):
+            raise ValueError('Matrices con distinto orden')
+        return Matrix ([ (self|i) + (other|i) for i in range(1,self.n+1) ])
             
     def __rmul__(self,x):
         """Multiplica una Matrix por un número a su izquierda.
@@ -478,16 +475,12 @@ class Matrix:
             return x*self
 
         elif isinstance(x, Vector):
-            if self.n == x.n:
-                return sum([(x|j)*(self|j) for j in range(1,self.n+1)], V0(self.m))
-            else:
-                print("error en producto: vector y matriz incompatibles")
+            if self.n != x.n:      raise ValueError('Vector y Matrix incompatibles')
+            return sum([(x|j)*(self|j) for j in range(1,self.n+1)], V0(self.m))
 
         elif isinstance(x, Matrix):
-            if self.n == x.m:
-                return Matrix( [ self*(x|j) for j in range(1,x.n+1)] )
-            else:
-                print("error en producto: matrices incompatibles")
+            if self.n != x.m:      raise ValueError('matrices incompatibles')
+            return Matrix( [ self*(x|j) for j in range(1,x.n+1)] )
 
     def __eq__(self, other):
         """Indica si es cierto que dos matrices son iguales"""
@@ -506,21 +499,24 @@ class Matrix:
         >>>  A & T([{1,3},(5,1),(5,2,1)])# Aplica la secuencia de transformac.
                      # sobre las columnas de A y en el mismo orden de la lista
         """
+
         if isinstance(t.t,set):
             self.lista = Matrix( [(self|max(t.t)) if k==min(t.t) else \
                                   (self|min(t.t)) if k==max(t.t) else \
                                   (self|k) for k in range(1,self.n+1)]).lista.copy()
 
-        elif isinstance(t.t,tuple) and len(t.t) == 2:
-             self.lista = Matrix([ t.t[0]*(self|k) if k==t.t[1] else (self|k) \
-                                   for k in range(1,self.n+1)] ).lista.copy()
-                  
-        elif isinstance(t.t,tuple) and len(t.t) == 3:
-             self.lista = Matrix([ t.t[0]*(self|t.t[1]) + (self|k) if k==t.t[2] else \
-                                   (self|k) for k in range(1,self.n+1)] ).lista.copy()
+        elif isinstance(t.t,tuple) and (len(t.t) == 2):
+            self.lista = Matrix([ t.t[0]*(self|k) if k==t.t[1] else  \
+                                  (self|k) for k in range(1,self.n+1)] ).lista.copy()
+
+        elif isinstance(t.t,tuple) and (len(t.t) == 3):
+            self.lista = Matrix([ t.t[0]*(self|t.t[1]) + (self|k) if k==t.t[2] else \
+                                  (self|k) for k in range(1,self.n+1)] ).lista.copy()
+
         elif isinstance(t.t,list):
              for k in t.t:          
                  self & T(k)
+
         return self
         
     def __rand__(self,t):
@@ -545,6 +541,30 @@ class Matrix:
                 
         return self
         
+    def __pow__(self,n):
+        """Calcula potencias de una Matrix (incluida la inversa)"""
+        def MatrixInversa( self ):
+            """Calculo de la inversa de una matriz"""
+            L = ECL(self)
+
+            if L.rank < L.n:
+                raise ArithmeticError('Matrix singular')
+
+            return Matrix( I(L.n) & T(ECUN(L).pasos[1]) )
+
+        if self.m != self.n:       raise ValueError('Matrix no cuadrada')
+        if not isinstance(n,int):  raise ValueError('La potencia no es un entero')
+
+        M = self
+
+        for i in range(1,abs(n)):
+            M = M * self
+
+        if n < 0:
+            M = MatrixInversa(M)
+
+        return M
+
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'Matrix(' + repr(self.lista) + ')'
@@ -558,7 +578,7 @@ class Matrix:
         return '\\begin{bmatrix}' + \
                 '\\\\'.join(['&'.join([latex(i|self|j) for j in range(1,self.n+1) ]) \
                                                        for i in range(1,self.m+1) ]) + \
-               '\\end{bmatrix}' if self.lista else '\\begin{bmatrix}\\ \\end{bmatrix}'
+               '\\end{bmatrix}'
                
     def __reversed__(self):
         """Devuelve el reverso de una Matrix"""
@@ -625,7 +645,15 @@ class T:
 
         else:
             self.t = t
-        
+        for j in CreaLista(self.t):
+            if isinstance(j,tuple) and (len(j) == 2) and j[0]==0:
+                raise ValueError('T( (0, i) ) no es una trasformación elemental')
+            if isinstance(j,tuple) and (len(j) == 3) and (j[1] == j[2]):
+                raise ValueError('T( (a, i, i) ) no es una trasformación elemental')
+            if isinstance(j,set) and (len(j) > 2) or not j:
+                raise ValueError \
+                ('El conjunto debe tener uno o dos índices para ser trasformación elemental')
+
     def __and__(self, other):
         """Composición de transformaciones elementales (o transformación filas)
 
@@ -663,19 +691,35 @@ class T:
             return other.__rand__(self)
 
     def __invert__(self):
-        """Invierte el orden de la lista de abreviaturas"""
+        """Transpone la lista de abreviaturas (invierte su orden)"""
         return T( list(reversed(self.t)) ) if isinstance(self.t, list) else self
         
-    def inversa(self):
-        """Devuelve la inversa de [[T]]"""
-        def CreaLista(t):
-            """Devuelve t si t es una lista; si no devuelve la lista [t]"""
-            return t if isinstance(t, list) else [t]
-            
-        return ~T([ (-j[0],j[1],j[2])       if (isinstance(j,tuple) and len(j)==3) else \
-                    (Fraction(1,j[0]),j[1]) if (isinstance(j,tuple) and len(j)==2) else \
-                    j                                       for j in CreaLista(self.t) ])
-        
+    def __pow__(self,n):
+        """Calcula potencias de una T (incluida la inversa)"""
+        def Tinversa ( self ):
+            """Calculo de la inversa de una transformación elemental"""
+            def CreaLista(t):
+                """Devuelve t si t es una lista; si no devuelve la lista [t]"""
+                return t if isinstance(t, list) else [t]
+                
+
+            listaT = [ ( -j[0], j[1], j[2] )    if (isinstance(j,tuple) and len(j)==3) else \
+                       (Fraction(1,j[0]), j[1]) if (isinstance(j,tuple) and len(j)==2) else \
+                       j                                         for j in CreaLista(self.t) ]
+
+            return ~T( listaT )    
+        if not isinstance(n,int):
+            raise ValueError('La potencia no es un entero')
+        t = self
+
+        for i in range(1,abs(n)):
+            t = t & self
+
+        if n < 0:
+            t = Tinversa(t)
+
+        return t
+
     def __repr__(self):
         """ Muestra T en su representación python """
         return 'T(' + repr(self.t) + ')'
@@ -1384,7 +1428,7 @@ class EFL(Matrix):
         self.pasos = pasos 
         super(self.__class__ ,self).__init__(A.lista)
 
-class Inversa(Matrix):
+class InvMat(Matrix):
     def __init__(self, data, rep=0):
         """Devuelve la matriz inversa y los pasos dados sobre las columnas"""
         def PasosYEscritura(data,pasos,TexPasosPrev=[]):
@@ -1416,18 +1460,11 @@ class Inversa(Matrix):
         A     = Matrix(data)
 
         if A.m != A.n:
-            print('La matriz no es cuadrada, así que no tiene inversa')
-            return
+            raise ValueError('Matrix no cuadrada')
 
         L = ECL(A)
         if L.rank < A.n:
-            print('La matriz es singular, así que no tiene inversa')
-            self.lista = []
-            if rep:
-                stack = BlockMatrix([[A],[I(A.n)]])
-                from IPython.display import display, Math
-                display(Math(PasosYEscritura(stack, L.pasos)))
-            return None
+            raise ArithmeticError('Matrix singular')
 
         M  = ECUN(L)
         stack = BlockMatrix([[A],[I(A.n)]])
@@ -1440,7 +1477,7 @@ class Inversa(Matrix):
         self.pasos = M.pasos 
         super(self.__class__ ,self).__init__(Inv.lista)
 
-class InversaF(Matrix):
+class InvMatF(Matrix):
     def __init__(self, data, rep=0):
         """Devuelve la matriz inversa y los pasos dados sobre las filas"""
         def PasosYEscritura(data,pasos,TexPasosPrev=[]):
@@ -1481,7 +1518,7 @@ class InversaF(Matrix):
         self.pasos = Id.pasos 
         super(self.__class__ ,self).__init__(Inv.lista)
 
-class InversaFC(Matrix):
+class InvMatFC(Matrix):
     def __init__(self, data, rep=0):
         """Devuelve la matriz inversa y los pasos dados sobre las filas y columnas"""
         def PasosYEscritura(data,pasos,TexPasosPrev=[]):
@@ -1522,6 +1559,62 @@ class InversaFC(Matrix):
         self.pasos = Id.pasos 
         super(self.__class__ ,self).__init__(Inv.lista)
 
+class EspacioNulo:
+    def __init__(self, data, rep=0):
+        """Describe el espacio nulo de una matriz y los pasos para encontrarlo"""
+        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+            """Escribe en LaTeX los pasos efectivos dados"""
+            A   = Matrix(data);  p   = [[],[]]
+            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+            for l in range(0,2):
+                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                            for i in range(0,len(pasos[l])) ]
+                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                if l==0:
+                    for i in reversed(range(0,len(p[l]))):
+                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( p[l][i] & A )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                if l==1:
+                    for i in range(0,len(p[l])):
+                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( A & p[l][i] )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+            return tex
+
+
+        A     = Matrix(data)
+        L     = ECL(A)
+        E     = I(A.n) & T(L.pasos[1])
+        
+        self.base  = list([Vector(E|j) for j in range(L.rank+1, L.n+1)])
+
+        stack = BlockMatrix([[A],[I(A.n)]])
+        self.tex   = PasosYEscritura(stack, L.pasos)
+        if rep:
+           from IPython.display import display, Math
+           display(Math(self.tex))
+
+    def __repr__(self):
+        """ Muestra una matriz en su representación python """
+        return 'Combinaciones lineales de {' + repr(self.base) + '}'
+
+    def _repr_html_(self):
+        """ Construye la representación para el  entorno jupyter notebook """
+        return html(self.latex())
+
+    def latex(self):
+        """ Construye el comando LaTeX """
+        return '\\text{Conjunto de combinaciones lineales de }\\left\\{' + \
+            ';\;'.join([latex(self.base[i]) for i in range(0,len(self.base))]) + \
+            '\\right\\}'
+           
 class Normal(Matrix):
     def __init__(self, data):
         """Escalona por Gauss obteniendo una matriz cuyos pivotes son unos"""
