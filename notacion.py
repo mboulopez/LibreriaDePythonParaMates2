@@ -523,7 +523,7 @@ class Matrix:
 
     def __reversed__(self):
         """Devuelve el reverso de una Matrix"""
-        return Matrix(self.sis.lista[::-1])
+        return Matrix(reversed(self.sis))
 
     def __neg__(self):
         """Devuelve el opuesto de una Matrix"""
@@ -1708,7 +1708,7 @@ class SubEspacio:
     def __init__(self,data):
         """Inicializa un SubEspacio de Rn"""
         if not isinstance(data, (Sistema, Matrix)):
-             raise ValueError('Argumento debe ser un Sistema o Matrix')
+             raise ValueError(' Argumento debe ser un Sistema o Matrix ')
         if isinstance(data, Sistema):
              A          = Matrix(data)
              L          = ECLsd(A)
