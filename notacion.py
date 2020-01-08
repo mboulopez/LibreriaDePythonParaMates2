@@ -3394,7 +3394,7 @@ class InvMatFC(Matrix):
         M          = EGCN(EGF(A))
         if M.rank < A.n:
             raise ArithmeticError('Matrix singular')        
-        Inv        = ( I(A.n) & T(Id.pasos[1]) ) * ( T(Id.pasos[0]) & I(A.n) )
+        Inv        = ( I(A.n) & T(M.pasos[1]) ) * ( T(M.pasos[0]) & I(A.n) )
         self.pasos = M.pasos  
         self.tex = tex(BlockMatrix([ [A,I(A.m)], [I(A.n),M0(A.m,A.n)] ]),self.pasos)
         super(self.__class__ ,self).__init__(Inv.sis)
