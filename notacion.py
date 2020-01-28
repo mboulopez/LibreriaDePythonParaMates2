@@ -510,9 +510,10 @@ class Matrix:
         """Calcula potencias de una Matrix (incluida la inversa)"""
         def MatrixInversa( self ):
             """Calculo de la inversa de una matriz"""
-            L = ElimGJ(self)
-            if L.rank < L.n:  raise ArithmeticError('Matrix singular')
-            return Matrix( I(L.n) & T(L.pasos[1]) )
+            if self.m != self.n: raise ValueError('Matrix no cuadrada')
+            R = ElimrGJ(self)
+            if R.rank < R.n:    raise ArithmeticError('Matrix singular')
+            return Matrix( I(R.n) & T(R.pasos[1]) )
             
         if self.m != self.n:       raise ValueError('Matrix no cuadrada')
         if not isinstance(n,int):  raise ValueError('La potencia no es un entero')
@@ -818,7 +819,10 @@ class I(Matrix):
 
 class Elim(Matrix):
     def __init__(self, data, rep=0):
-        """Eliminación por columnas de una Matriz (Izda a Dcha)"""
+        """Devuelve una forma pre-escalonada de Matrix(data)
+
+           operando con las columnas (y evitando operar con fracciones). 
+           Si rep es no nulo, se muestran en Jupyter los pasos dados"""
         def BuscaNuevoPivote(self, r=0):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
@@ -826,7 +830,7 @@ class Elim(Matrix):
             while p in columnaOcupada:
                 p = ppivote(self, p)
             return p
-        elim = lambda x: x > p
+        celim = lambda x: x > p
         A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
@@ -834,7 +838,7 @@ class Elim(Matrix):
                 r += 1
                 Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
                                (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
+                                              for j in filter(celim, range(1,A.n+1)) ] )
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
                 columnaOcupada.add(p)
@@ -907,7 +911,10 @@ class Elim(Matrix):
         
 class ElimG(Matrix):
     def __init__(self, data, rep=0):
-        """Eliminación Gaussiana de las columnas de una Matriz"""
+        """Devuelve una forma escalonada de Matrix(data)
+
+           operando con las columnas (y evitando operar con fracciones). 
+           Si rep es no nulo, se muestran en Jupyter los pasos dados"""
         def BuscaNuevoPivote(self, r=0):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
@@ -993,7 +1000,11 @@ class ElimG(Matrix):
 
 class ElimGJ(Matrix):
     def __init__(self, data, rep=0):
-        """Eliminación por columnas de una Matriz (Izda a Dcha)"""
+        """Devuelve una forma escalonada reducida de Matrix(data)
+
+           operando con las columnas (y evitando operar con fracciones  
+           hasta el último momento). Si rep es no nulo, se muestran en 
+           Jupyter los pasos dados"""
         def BuscaNuevoPivote(self, r=0):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
@@ -1001,18 +1012,20 @@ class ElimGJ(Matrix):
             while p in columnaOcupada:
                 p = ppivote(self, p)
             return p
-        elim = lambda x: x != p
-        A = ElimG(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
+        celim = lambda x: x < p
+        A = ElimG(data);
+        r = 0;  transformaciones = [];  columnaOcupada = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
                 r += 1
                 Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
                                (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
+                                              for j in filter(celim, range(1,A.n+1)) ] )
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
                 columnaOcupada.add(p)
+                
         transElimIzda = transformaciones
 
         r = 0;  transformaciones = [];  columnaOcupada = set()
@@ -1024,6 +1037,287 @@ class ElimGJ(Matrix):
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
                 columnaOcupada.add(p)
+                
+        pasos = [ [], A.pasos[1] + transElimIzda  + [T(transformaciones)] ]
+        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+            """Escribe en LaTeX los pasos efectivos dados"""
+            A   = Matrix(data);  p   = [[],[]]
+            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+            for l in range(0,2):
+                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                            for i in range(0,len(pasos[l])) ]
+                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                if l==0:
+                    for i in reversed(range(0,len(p[l]))):
+                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( p[l][i] & A )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                if l==1:
+                    for i in range(0,len(p[l])):
+                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( A & p[l][i] )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+            return tex
+        def tex(data, pasos, TexPasosPrev=[]):
+            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+                """Escribe en LaTeX los pasos efectivos dados"""
+                A   = Matrix(data);  p   = [[],[]]
+                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+                for l in range(0,2):
+                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                                for i in range(0,len(pasos[l])) ]
+                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                    if l==0:
+                        for i in reversed(range(0,len(p[l]))):
+                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( p[l][i] & A )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                    if l==1:
+                        for i in range(0,len(p[l])):
+                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( A & p[l][i] )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+                return tex
+            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
+            if rep:  
+                from IPython.display import display, Math
+                display(Math(tex))
+            return tex
+        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
+        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
+        self.tex = tex(data, pasos, TexPasosPrev)
+        self.rank  = r
+        pasos[0] = pasos[0] + pasosPrevios[0] 
+        pasos[1] = pasosPrevios[1] + pasos[1]
+        self.pasos = pasos 
+
+        super(self.__class__ ,self).__init__(A.sis)
+
+class Elimr(Matrix):
+    def __init__(self, data, rep=0):
+        """Devuelve una forma pre-escalonada de Matrix(data)
+
+           operando con las columnas. Si rep es no nulo, se muestran en 
+           Jupyter los pasos dados"""
+        def BuscaNuevoPivote(self, r=0):
+            ppivote = lambda v, k=0:\
+                      ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
+            p = ppivote(self, r)
+            while p in columnaOcupada:
+                p = ppivote(self, p)
+            return p
+        celim = lambda x: x > p
+        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
+        for i in range(1,A.m+1):
+            p = BuscaNuevoPivote(i|A); 
+            if p:
+                r += 1
+                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(celim, range(1,A.n+1))])
+                transformaciones += [Tr]  if Tr.t else []
+                A & T( Tr )
+                columnaOcupada.add(p)
+        pasos = [[], transformaciones]
+        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+            """Escribe en LaTeX los pasos efectivos dados"""
+            A   = Matrix(data);  p   = [[],[]]
+            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+            for l in range(0,2):
+                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                            for i in range(0,len(pasos[l])) ]
+                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                if l==0:
+                    for i in reversed(range(0,len(p[l]))):
+                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( p[l][i] & A )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                if l==1:
+                    for i in range(0,len(p[l])):
+                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( A & p[l][i] )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+            return tex
+        def tex(data, pasos, TexPasosPrev=[]):
+            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+                """Escribe en LaTeX los pasos efectivos dados"""
+                A   = Matrix(data);  p   = [[],[]]
+                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+                for l in range(0,2):
+                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                                for i in range(0,len(pasos[l])) ]
+                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                    if l==0:
+                        for i in reversed(range(0,len(p[l]))):
+                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( p[l][i] & A )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                    if l==1:
+                        for i in range(0,len(p[l])):
+                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( A & p[l][i] )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+                return tex
+            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
+            if rep:  
+                from IPython.display import display, Math
+                display(Math(tex))
+            return tex
+        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
+        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
+        self.tex = tex(data, pasos, TexPasosPrev)
+        self.rank  = r
+        pasos[0] = pasos[0] + pasosPrevios[0] 
+        pasos[1] = pasosPrevios[1] + pasos[1]
+        self.pasos = pasos 
+
+        super(self.__class__ ,self).__init__(A.sis)
+        
+class ElimrG(Matrix):
+    def __init__(self, data, rep=0):
+        """Devuelve una forma escalonada de Matrix(data)
+
+           operando con las columnas. Si rep es no nulo, se muestran en 
+           Jupyter los pasos dados"""
+        def BuscaNuevoPivote(self, r=0):
+            ppivote = lambda v, k=0:\
+                      ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
+            p = ppivote(self, r)
+            while p in columnaOcupada:
+                p = ppivote(self, p)
+            return p
+        A = Elimr(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
+        for i in range(1,A.m+1):
+            p = BuscaNuevoPivote(i|A); 
+            if p:
+                r += 1
+                Tr = T([ {p, r} ])
+                transformaciones += [Tr]  if Tr.t else []
+                A & T( Tr )
+                columnaOcupada.add(r)
+        pasos = [ [], A.pasos[1]+[T(transformaciones)] ]
+        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+            """Escribe en LaTeX los pasos efectivos dados"""
+            A   = Matrix(data);  p   = [[],[]]
+            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+            for l in range(0,2):
+                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                            for i in range(0,len(pasos[l])) ]
+                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                if l==0:
+                    for i in reversed(range(0,len(p[l]))):
+                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( p[l][i] & A )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                if l==1:
+                    for i in range(0,len(p[l])):
+                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                        if isinstance (data, Matrix):
+                                     tex += latex( A & p[l][i] )
+                        elif isinstance (data, BlockMatrix):
+                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+            return tex
+        def tex(data, pasos, TexPasosPrev=[]):
+            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
+                """Escribe en LaTeX los pasos efectivos dados"""
+                A   = Matrix(data);  p   = [[],[]]
+                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+                for l in range(0,2):
+                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                                for i in range(0,len(pasos[l])) ]
+                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                    if l==0:
+                        for i in reversed(range(0,len(p[l]))):
+                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( p[l][i] & A )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                    if l==1:
+                        for i in range(0,len(p[l])):
+                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( A & p[l][i] )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+                return tex
+            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
+            if rep:  
+                from IPython.display import display, Math
+                display(Math(tex))
+            return tex
+        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
+        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
+        self.tex = tex(data, pasos, TexPasosPrev)
+        self.rank  = r
+        pasos[0] = pasos[0] + pasosPrevios[0] 
+        pasos[1] = pasosPrevios[1] + pasos[1]
+        self.pasos = pasos 
+
+        super(self.__class__ ,self).__init__(A.sis)
+
+class ElimrGJ(Matrix):
+    def __init__(self, data, rep=0):
+        """Devuelve una forma escalonada reducida de Matrix(data)
+
+           operando con las columnas. Si rep es no nulo, se muestran en
+           Jupyter los pasos dados"""
+        def BuscaNuevoPivote(self, r=0):
+            ppivote = lambda v, k=0:\
+                      ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
+            p = ppivote(self, r)
+            while p in columnaOcupada:
+                p = ppivote(self, p)
+            return p
+        celim = lambda x: x < p
+        A = ElimrG(data);
+        r = 0;  transformaciones = [];  columnaOcupada = set()
+        for i in range(1,A.m+1):
+            p = BuscaNuevoPivote(i|A); 
+            if p:
+                r += 1
+                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(celim, range(1,A.n+1))])
+                transformaciones += [Tr]  if Tr.t else []
+                A & T( Tr )
+                columnaOcupada.add(p)                
+        transElimIzda = transformaciones
+        r = 0;  transformaciones = [];  columnaOcupada = set()
+        for i in range(1,A.m+1):
+            p = BuscaNuevoPivote(i|A); 
+            if p:
+                r += 1
+                Tr = T([ (Fraction(1, i|A|p), p) ])
+                transformaciones += [Tr]  if Tr.t else []
+                A & T( Tr )
+                columnaOcupada.add(p)                
         pasos = [ [], A.pasos[1] + transElimIzda  + [T(transformaciones)] ]
         def PasosYEscritura(data,pasos,TexPasosPrev=[]):
             """Escribe en LaTeX los pasos efectivos dados"""
@@ -1093,7 +1387,10 @@ class ElimGJ(Matrix):
 
 class ElimF(Matrix):
     def __init__(self, data, rep=0):
-        """Eliminación por filas de una Matriz (Arriba a Abj)"""
+        """Devuelve una forma pre-escalonada de Matrix(data)
+
+           operando con las filas (y evitando operar con fracciones). 
+           Si rep es no nulo, se muestran en Jupyter los pasos dados"""
         A = Elim(~Matrix(data));     r = A.rank
         pasos = [ list(reversed([ ~t for t in A.pasos[1] ])), [] ]
         def PasosYEscritura(data,pasos,TexPasosPrev=[]):
@@ -1164,7 +1461,10 @@ class ElimF(Matrix):
         
 class ElimGF(Matrix):
     def __init__(self, data, rep=0):
-        """Eliminación Gaussiana por filas de una Matriz"""
+        """Devuelve una forma escalonada de Matrix(data)
+
+           operando con las filas (y evitando operar con fracciones). 
+           Si rep es no nulo, se muestran en Jupyter los pasos dados"""
         A = ElimG(~Matrix(data));    r = A.rank
         pasos = [ list(reversed([ ~t for t in A.pasos[1] ])), [] ]
         def PasosYEscritura(data,pasos,TexPasosPrev=[]):
@@ -1235,7 +1535,11 @@ class ElimGF(Matrix):
         
 class ElimGJF(Matrix):
     def __init__(self, data, rep=0):
-        """Eliminación Gauss-Jordan por filas de una Matriz"""
+        """Devuelve una forma escalonada reducida de Matrix(data)
+
+           operando con las columnas (y evitando operar con fracciones  
+           hasta el último momento). Si rep es no nulo, se muestran en 
+           Jupyter los pasos dados"""
         A = ElimGJ(~Matrix(data));   r = A.rank
         pasos = [ list(reversed([ ~t for t in A.pasos[1] ])), [] ]
         def PasosYEscritura(data,pasos,TexPasosPrev=[]):
@@ -1304,2496 +1608,6 @@ class ElimGJF(Matrix):
 
         super(self.__class__ ,self).__init__((~A).sis)
         
-class RGC(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (transf. Gauss)"""
-        S       = 'Normal'
-        elim    = lambda x: x > p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGJC(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (transf. Gauss)"""
-        S       = 'Normal'
-        elim    = lambda x: x != p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGOC(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (transf. Gauss)"""
-        S       = 'Opuesto'
-        elim    = lambda x: x < p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGCsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (sin divisiones)"""
-        S       = 'Normal'
-        elim    = lambda x: x > p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
-                               (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGJCsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (sin divisiones)"""
-        S       = 'Normal'
-        elim    = lambda x: x != p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
-                               (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGOCsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (sin divisiones)"""
-        S       = 'Opuesto'
-        elim    = lambda x: x < p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
-                               (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGCN(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (pivotes normalizados)"""
-        S       = 'Normal'
-        elim    = lambda x: x > p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ (Fraction(1, i|A|p), p) ])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGJCN(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (pivotes normalizados)"""
-        S       = 'Normal'
-        elim    = lambda x: x != p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ (Fraction(1, i|A|p), p) ])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGOCN(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por columnas (pivotes normalizados)"""
-        S       = 'Opuesto'
-        elim    = lambda x: x < p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ (Fraction(1, i|A|p), p) ])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGC(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
-        S       = 'Normal'
-        elim    = lambda x: x > p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGJC(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
-        S       = 'Normal'
-        elim    = lambda x: x != p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGOC(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (transf. Gauss)"""
-        S       = 'Opuesto'
-        elim    = lambda x: x < p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGCsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (sin dividir)"""
-        S       = 'Normal'
-        elim    = lambda x: x > p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
-                               (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGJCsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (sin dividir)"""
-        S       = 'Normal'
-        elim    = lambda x: x != p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
-                               (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGOCsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (sin dividir)"""
-        S       = 'Opuesto'
-        elim    = lambda x: x < p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
-                               (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
-                                              for j in filter(elim,range(1,A.n+1)) ] )                                 
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGCN(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (pivotes normalizados)"""
-        S       = 'Normal'
-        elim    = lambda x: x > p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                
-                Tr = T([ (Fraction(1, i|A|p), p) ])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGJCN(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (pivotes normalizados)"""
-        S       = 'Normal'
-        elim    = lambda x: x != p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                
-                Tr = T([ (Fraction(1, i|A|p), p) ])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class EGOCN(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por columnas (pivotes normalizados)"""
-        S       = 'Opuesto'
-        elim    = lambda x: x < p
-        def BuscaNuevoPivote(self, r=0, Sentido='Normal'):
-            def ppivote(v, k=0, sentido='Normal'):
-                """Devuelve el primer índice(i) mayor que k de un coeficiente(c) no 
-                nulo del Vector v. En caso de no existir devuelve 0. Si el vector
-                se recorre en sentido normal, devuelve el último índice(i) menor 
-                que k de v."""
-                if sentido=='Normal':
-                    return ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
-                else:
-                    k = k-1 if k else len(v.sis)
-                    return ( [i[0] for i in reversed(list(enumerate(v.sis,1))) \
-                                                       if (i[1]!=0 and i[0]<=k) ] + [0] )[0]
-            p = ppivote(self, r, Sentido)
-            while p in columnaOcupada:
-                p = ppivote(self, p, Sentido)
-            return p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
-        sentido = lambda x: x if S=='Normal' else reversed(x)
-        pc      = lambda x: x if S=='Normal' else (A.n+1)-x
-        for i in sentido(range(1,A.m+1)):
-            p = BuscaNuevoPivote(i|A , Sentido=S); 
-            if p:
-                r += 1
-                Tr = T([ {p, pc(r)} ])
-                p  = pc(r)
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                
-                Tr = T([ (Fraction(1, i|A|p), p) ])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(elim,range(1,A.n+1))])
-                transformaciones += [Tr]  if Tr.t else []
-                A & T( Tr )
-                columnaOcupada.add(p)
-        pasos = [[], transformaciones]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__(A.sis)
-
-class RGF(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por filas (transf. Gauss)"""
-        A = RGC(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class RGFsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por filas (sin dividir)"""
-        A = RGCsd(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class RGFN(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por filas (pivotes normalizados)"""
-        A = RGCN(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class RGJFN(Matrix):
-    def __init__(self, data, rep=0):
-        """Reduce una Matrix con eliminación por filas (pivotes normalizados)"""
-        A = RGJCN(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class EGF(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por filas (transf. Gauss)"""
-        A = EGC(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class EGFsd(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por filas (sin dividir)"""
-        A = EGCsd(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class EGFN(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por filas (pivotes normalizados)"""
-        A = EGCN(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class EGJFN(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por filas (pivotes normalizados)"""
-        A = EGJCN(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
-class EGOF(Matrix):
-    def __init__(self, data, rep=0):
-        """Escalona una Matrix con eliminación por filas (transf. Gauss)"""
-        A = EGOC(~Matrix(data))
-        r = A.rank
-        pasos = [ list(reversed(A.pasos[1])) , [] ]
-        def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-            """Escribe en LaTeX los pasos efectivos dados"""
-            A   = Matrix(data);  p   = [[],[]]
-            tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-            for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                    or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                    or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                            for i in range(0,len(pasos[l])) ]
-                p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                if l==0:
-                    for i in reversed(range(0,len(p[l]))):
-                        tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( p[l][i] & A )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                if l==1:
-                    for i in range(0,len(p[l])):
-                        tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                        if isinstance (data, Matrix):
-                                     tex += latex( A & p[l][i] )
-                        elif isinstance (data, BlockMatrix):
-                                     tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-            return tex
-        def tex(data, pasos, TexPasosPrev=[]):
-            def PasosYEscritura(data,pasos,TexPasosPrev=[]):
-                """Escribe en LaTeX los pasos efectivos dados"""
-                A   = Matrix(data);  p   = [[],[]]
-                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
-                for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
-                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
-                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
-                                                                for i in range(0,len(pasos[l])) ]
-                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
-                    if l==0:
-                        for i in reversed(range(0,len(p[l]))):
-                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( p[l][i] & A )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
-                    if l==1:
-                        for i in range(0,len(p[l])):
-                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
-                            if isinstance (data, Matrix):
-                                         tex += latex( A & p[l][i] )
-                            elif isinstance (data, BlockMatrix):
-                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
-                return tex
-            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
-                from IPython.display import display, Math
-                display(Math(tex))
-            return tex
-        pasosPrevios = data.pasos if hasattr(data, 'pasos') and data.pasos else [[],[]]
-        TexPasosPrev = data.tex   if hasattr(data, 'tex')   and data.tex   else []
-        self.tex = tex(data, pasos, TexPasosPrev)
-        self.rank  = r
-        pasos[0] = pasos[0] + pasosPrevios[0] 
-        pasos[1] = pasosPrevios[1] + pasos[1]
-        self.pasos = pasos 
-
-        super(self.__class__ ,self).__init__((~A).sis)
-
 class InvMat(Matrix):
     def __init__(self, data, rep=0):
         """Devuelve la matriz inversa y los pasos dados sobre las columnas"""
@@ -4144,7 +1958,7 @@ class SubEspacio:
         """Inicializa un SubEspacio de Rn"""
         def SGenENulo(A):
             """Encuentra un sistema generador del Espacio Nulo de A"""
-            R = RGC(A)
+            R = Elim(A)
             S = Sistema([(I(A.n) & T(R.pasos[1]))|j for j in range(1,A.n+1) \
                                                             if (R|j).esNulo() ])
             return Sistema([V0(A.n)]) if R.rank==A.n else S
@@ -4152,7 +1966,7 @@ class SubEspacio:
             raise ValueError(' Argumento debe ser un Sistema o Matrix ')
         if isinstance(data, Sistema):
             A          = Matrix(data)
-            L          = EGCsd(A)
+            L          = ElimG(A)
             self.dim   = L.rank
             self.base  = Sistema([L|j for j in range(1,L.rank+1)])
             self.sgen  = self.base if L.rank else Sistema([V0(A.m)])
@@ -4165,20 +1979,20 @@ class SubEspacio:
             self.base  = self.sgen if self.dim else Sistema([])
             self.cart  = ~Matrix(SGenENulo(~Matrix(self.sgen)))
             self.Rn    = A.n
-    def contenidoEn(self, other):
+    def contenido_en(self, other):
         """Indica si este SubEspacio está contenido en other"""
         self.verificacion(other)
         if isinstance(other, SubEspacio):
             #return all ([(other.cart*w).esNulo() for w in self.sgen])
             M = Matrix(BlockMatrix([[Matrix(other.sgen), Matrix( self.sgen)]]))
-            return True if (EGCsd(M).rank == other.dim) else False
+            return True if (Elim(M).rank == other.dim) else False
         else:
-            return other.v.esNulo() and self.contenidoEn(other.S)
+            return other.v.esNulo() and self.contenido_en(other.S)
         
     def __eq__(self, other):
         """Indica si un subespacio de Rn es igual a otro"""
         self.verificacion(other)
-        return self.contenidoEn(other) and other.contenidoEn(self)
+        return self.contenido_en(other) and other.contenido_en(self)
 
     def __ne__(self, other):
         """Indica si un subespacio de Rn es distinto de otro"""
@@ -4248,7 +2062,7 @@ class EAfin:
         if not isinstance(v, Vector) or v.n != self.S.Rn:
              raise ValueError('v y SubEspacio deben estar en el mismo espacio vectorial')
         MA      = Matrix( BlockMatrix([ [ Matrix(self.S.sgen), Matrix([v]) ] ]) )
-        self.v  = RGCsd( MA )|0
+        self.v  = Elim( MA )|0
         self.Rn = self.S.Rn
         
     def __contains__(self, other):
@@ -4257,18 +2071,18 @@ class EAfin:
             raise ValueError('Vector con un número inadecuado de componentes')
         return (self.S.cart)*other == (self.S.cart)*self.v
 
-    def contenidoEn(self, other):
+    def contenido_en(self, other):
         """Indica si este EAfin está contenido en other"""
         self.verificacion(other)
         if isinstance(other, SubEspacio):
-             return self.v in other and self.S.contenidoEn(other)
+             return self.v in other and self.S.contenido_en(other)
         else:
-             return self.v in other and self.S.contenidoEn(other.S)
+             return self.v in other and self.S.contenido_en(other.S)
 
     def __eq__(self, other):
         """Indica si un EAfin de Rn es igual a other"""
         self.verificacion(other)
-        return self.contenidoEn(other) and other.contenidoEn(self)
+        return self.contenido_en(other) and other.contenido_en(self)
 
     def __ne__(self, other):
         """Indica si un subespacio de Rn es distinto de other"""
