@@ -2342,7 +2342,7 @@ class SELGJ:
 class Diagonaliza(Matrix):
     def __init__(self, A, espectro, Rep=0):
         """Diagonaliza por bloques triangulares la Matrix cuadrada A
-        
+
         Encontrando una matriz semejante mediante trasformaciones de sus
         columnas y las transformaciones inversas espejo de las filas.
 
@@ -2388,8 +2388,7 @@ class Diagonaliza(Matrix):
             return p
         D            = Matrix(A)
         S            = I(A.n)
-        espectro     = list(espectro)
-        #espectro.sort()
+        espectro     = list(espectro);         #espectro.sort()
         Tex          = latex( BlockMatrix( [[D], [S]] ) )
         pasosPrevios = [[],[]]
         selecc       = list(range(1,D.n+1))
@@ -2397,16 +2396,16 @@ class Diagonaliza(Matrix):
         for l in espectro:
             m = selecc[-1]
             D = D-(l*I(D.n))
-            Tex += '\\xrightarrow[' + latex(l) + '\\boldsymbol{I}]{(-)}' \
+            Tex += '\\xrightarrow[' + latex(l) + '\\mathbf{I}]{(-)}' \
                                     + latex(BlockMatrix( [[D], [S]] ))
-
-            pasos = [[], ElimG(selecc|D|selecc).pasos[1]]
+            TrCol = ElimG(selecc|D|selecc).pasos[1]
+            pasos = [ [], TrCol ]
             pasosPrevios[1] = pasosPrevios[1] + pasos[1]
 
             Tex = tex( BlockMatrix( [[D], [S]] ), pasos, Tex)
             D = D & T(pasos[1])
             S = S & T(pasos[1])
-            
+
             pasos = [ [T(pasos[1]).espejo()**-1] , []]
             pasosPrevios[0] = pasos[0] + pasosPrevios[0]
 
@@ -2418,28 +2417,27 @@ class Diagonaliza(Matrix):
                 for i in range(m,A.n+1):
                     p = BuscaNuevoPivote(i|D);
                     if p:
-                        Tr = [ T( [( Fraction((i|D|m),(i|D|p)).denominator,  m), \
-                                   (-Fraction((i|D|m),(i|D|p)).numerator, p, m)] ) ]
-                        pasos = [ [], [T(Tr)] ]
+                        TrCol = [ T([(-Fraction(i|D|m, i|D|p), p, m)]) ]
+                        pasos = [ [], TrCol ]
                         pasosPrevios[1] = pasosPrevios[1] + pasos[1]
+
                         Tex = tex( BlockMatrix( [[D], [S]] ), pasos, Tex)
                         D = D & T(pasos[1])
                         S = S & T(pasos[1])
-                        columnaOcupada.add(p)
-                        
 
-                pasos = [ [T(pasos[1]).espejo()**-1] , []]
-                pasosPrevios[0] = pasos[0] + pasosPrevios[0]
+                        pasos = [ [T(pasos[1]).espejo()**-1] , []]
+                        pasosPrevios[0] = pasos[0] + pasosPrevios[0]
 
-                Tex = tex( BlockMatrix( [[D], [S]] ), pasos, Tex)
-                D = T(pasos[0]) & D
+                        Tex = tex( BlockMatrix( [[D], [S]] ), pasos, Tex)
+                        D = T(pasos[0]) & D
 
-            D = D+l*I(D.n)
-            Tex += '\\xrightarrow[' + latex(l) + '\\boldsymbol{I}]{(+)}' \
+                        columnaOcupada.add(p)                        
+            D = D+(l*I(D.n))
+            Tex += '\\xrightarrow[' + latex(l) + '\\mathbf{I}]{(+)}' \
                                     + latex(BlockMatrix( [[D], [S]] ))
-
+            
             selecc.pop()
-
+            
         if Rep:
             from IPython.display import display, Math
             display(Math(Tex))
