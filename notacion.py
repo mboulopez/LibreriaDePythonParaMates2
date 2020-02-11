@@ -569,6 +569,33 @@ class Matrix:
         """Devuelve el opuesto de una Matrix"""
         return -1*self
 
+    def K(self,rep=0):
+        """Una forma pre-escalonada por columnas (K) de una Matrix"""
+        return Elim(self,rep)
+        
+    def L(self,rep=0): 
+        """Una forma escalonada por columnas (L) de una Matrix"""
+        return ElimG(self,rep)
+        
+    def R(self,rep=0):
+        """Forma escalonada reducida por columnas (R) de una Matrix"""
+        return ElimGJ(self,rep)
+        
+    def rank(self):
+        """Rango de una Matrix"""
+        return self.K().rank
+
+    def determinante(self):
+        """Devuelve el determinante de una matriz cuadrada"""
+        if self.m != self.n:
+            raise ValueError('Matrix no es cuadrada')
+        A = [ tr for tr in filter( lambda x: len(x)==2, T(self.R().pasos[1]).t ) ]
+        m = [-1 if isinstance(tr,set) else Fraction(1,tr[0]) for tr in A]
+
+        producto  = lambda x: 1 if not x else x[0] * producto(x[1:])
+
+        return 0 if self.rank() < self.n else producto(m)
+
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'Matrix(' + repr(self.sis) + ')'
@@ -2075,7 +2102,7 @@ class Homogenea:
 class SEL:
     def __init__(self, A, b, rep=0):
         """Resuelve un Sistema de Ecuaciones Lineales
-    
+
         mediante eliminación por columas en la matriz ampliada y muestra
         los pasos dados"""
         def tex(data, pasos, TexPasosPrev=[]):
@@ -2108,8 +2135,8 @@ class SEL:
             if rep:  
                 from IPython.display import display, Math
                 display(Math(tex))
-            return tex
-        A  = Matrix(A)      
+            return tex        
+        A  = Matrix(A)
         MA = A if b.esNulo() else Matrix( BlockMatrix([ [A, Matrix([-b])] ]) )
         BM = Matrix( BlockMatrix([ [MA], [I(MA.n)] ]) )
         filasA = list(range(1,A.m+1))
@@ -2120,7 +2147,6 @@ class SEL:
         if not b.esNulo() and not (filasA|LA|0).esNulo():
             self.tex = tex( {A.m, A.m+A.n} | BM | {A.n}, LA.pasos )
             raise ArithmeticError('No hay solución: Sistema incompatible')
-
         EA        = I(MA.n) & T(LA.pasos[1])
         Normaliza = T([])    if b.esNulo() else T([(Fraction(1,0|EA|0),MA.n)])
         EA        = EA & Normaliza
@@ -2134,7 +2160,6 @@ class SEL:
 
         self.pasos       = [ [], LA.pasos[1] + [Normaliza] ]
         self.tex         = tex( {A.m, A.m+A.n} | BM | {A.n}, self.pasos )
-        
     def EcParametricas(self):
         """Representación paramétrica del SubEspacio"""
         return '\\left\\{ \\boldsymbol{x}\\in\\mathbb{R}^' \
@@ -2209,7 +2234,6 @@ class SELS:
         if not b.esNulo() and not (filasA|LA|0).esNulo():
             self.tex = tex( {A.m, A.m+A.n} | BM | {A.n}, LA.pasos )
             raise ArithmeticError('No hay solución: Sistema incompatible')
-
         EA        = I(MA.n) & T(LA.pasos[1])
         Normaliza = T([])    if b.esNulo() else T([(Fraction(1,0|EA|0),MA.n)])
         EA        = EA & Normaliza
@@ -2222,8 +2246,7 @@ class SELS:
         self.eafin       = EAfin(self.sgen,self.solP)
 
         self.pasos       = [ [], LA.pasos[1] + [Normaliza] ]
-        self.tex         = tex( {A.m, A.m+A.n} | BM | {A.n}, self.pasos )
-        
+        self.tex         = tex( {A.m, A.m+A.n} | BM | {A.n}, self.pasos )    
     def EcParametricas(self):
         """Representación paramétrica del SubEspacio"""
         return '\\left\\{ \\boldsymbol{x}\\in\\mathbb{R}^' \
@@ -2297,8 +2320,7 @@ class SELGJ:
         
         if not b.esNulo() and not (filasA|LA|0).esNulo():
             self.tex = tex( {A.m, A.m+A.n} | BM | {A.n}, LA.pasos )
-            raise ArithmeticError('No hay solución: Sistema incompatible')
-            
+            raise ArithmeticError('No hay solución: Sistema incompatible')            
         EA        = I(MA.n) & T(LA.pasos[1])
         Normaliza = T([])    if b.esNulo() else T([(Fraction(1,0|EA|0),MA.n)])
         EA        = EA & Normaliza
@@ -2312,7 +2334,6 @@ class SELGJ:
 
         self.pasos       = [ [], LA.pasos[1] + [Normaliza] ]
         self.tex         = tex( {A.m, A.m+A.n} | BM | {A.n}, self.pasos )
-        
     def EcParametricas(self):
         """Representación paramétrica del SubEspacio"""
         return '\\left\\{ \\boldsymbol{x}\\in\\mathbb{R}^' \
