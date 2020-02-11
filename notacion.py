@@ -596,6 +596,15 @@ class Matrix:
 
         return 0 if self.rank() < self.n else producto(m)
 
+    def GS(self):
+        """Devuelve una Matrix equivalente cuyas columnas son ortogonales
+
+        Emplea el método de Gram-Schmidt"""
+        A = Matrix(self)
+        for n in range(2,A.n+1):
+            A & T([ (-Fraction((A|n)*(A|j),(A|j)*(A|j)), j, n) for j in range(1,n) ])
+        return A
+
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'Matrix(' + repr(self.sis) + ')'
