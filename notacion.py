@@ -24,7 +24,11 @@ def latex_fraction(self):
 setattr(Fraction, '_repr_html_', _repr_html_fraction)
 setattr(Fraction, 'latex', latex_fraction)
 
+def pinta(self):
+    from IPython.display import display, Math
+    display(Math(latex(self)))
 
+                       
 class Vector:
     """Clase Vector
 
@@ -94,6 +98,7 @@ class Vector:
             return self.sis|i
         elif isinstance(i, (list,tuple) ):
             return Vector ([ (self|a) for a in i ])
+
     def __ror__(self,i):
         """Selector por la izquierda
 
@@ -210,10 +215,18 @@ class Vector:
         """Devuelve el opuesto de un Vector"""
         return -1*self
 
-    def esNulo(self):
+    def es_nulo(self):
         """Indica si es cierto que el vector es nulo"""
         return self==self*0
 
+    def no_es_nulo(self):
+        """Indica si es cierto que el vector es nulo"""
+        return self!=self*0
+
+    def diag(self):
+        """Crea una Matrix diagonal cuya diagonal es self"""
+        return Matrix([(self|j)*(I(self.n)|j) for j in range(1,(self.n)+1)])
+        
     def __repr__(self):
         """ Muestra el vector en su representación python """
         return 'Vector(' + repr(self.sis.lista) + ')'
@@ -569,6 +582,10 @@ class Matrix:
         """Devuelve el opuesto de una Matrix"""
         return -1*self
 
+    def diag(self):
+        """Crea un Vector a partir de la diagonal de self"""
+        return Vector([ (j|self|j) for j in range(1,(self.n)+1)])
+        
     def K(self,rep=0):
         """Una forma pre-escalonada por columnas (K) de una Matrix"""
         return Elim(self,rep)
@@ -602,9 +619,19 @@ class Matrix:
         Emplea el método de Gram-Schmidt"""
         A = Matrix(self)
         for n in range(2,A.n+1):
-            A & T([ (-Fraction((A|n)*(A|j),(A|j)*(A|j)), j, n) for j in range(1,n) ])
+            A & T([ (-Fraction((A|n)*(A|j),(A|j)*(A|j)), j, n) for j in range(1,n) \
+                                                             if (A|j).no_es_nulo() ])
         return A
 
+    def normalizada(self,v='Columnas'):
+        if v == 'Columnas':
+            if any( (self|j).es_nulo() for j in range(1,self.n+1)):
+                raise ValueError('algún vector es nulo')
+            return Matrix([ (self|j)*Fraction(((self|j)*(self|j))**(-1/2.0)) \
+                            for j in range(1,self.n+1) if (self|j).no_es_nulo() ])
+        else:
+            return ~(~self.normalizada())
+            
     def __repr__(self):
         """ Muestra una matriz en su representación python """
         return 'Matrix(' + repr(self.sis) + ')'
@@ -909,11 +936,11 @@ class Elim(Matrix):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
             p = ppivote(self, r)
-            while p in columnaOcupada:
+            while p in colExcluida:
                 p = ppivote(self, p)
             return p
         celim = lambda x: x > p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
+        A = Matrix(data);  r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -923,7 +950,7 @@ class Elim(Matrix):
                                               for j in filter(celim, range(1,A.n+1)) ] )
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(p)
+                colExcluida.add(p)
         pasos = [[], transformaciones]
         def tex(data, pasos, TexPasosPrev=[]):
             def PasosYEscritura(data, pasos, TexPasosPrev=[]):
@@ -931,7 +958,7 @@ class Elim(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -952,7 +979,7 @@ class Elim(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -976,10 +1003,10 @@ class ElimG(Matrix):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
             p = ppivote(self, r)
-            while p in columnaOcupada:
+            while p in colExcluida:
                 p = ppivote(self, p)
             return p
-        A = Elim(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
+        A = Elim(data);  r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -987,7 +1014,7 @@ class ElimG(Matrix):
                 Tr = T([ {p, r} ])
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(r)
+                colExcluida.add(r)
         pasos = [ [], A.pasos[1]+[T(transformaciones)] ]
         def tex(data, pasos, TexPasosPrev=[]):
             def PasosYEscritura(data, pasos, TexPasosPrev=[]):
@@ -995,7 +1022,7 @@ class ElimG(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1016,7 +1043,7 @@ class ElimG(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1041,12 +1068,12 @@ class ElimGJ(Matrix):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
             p = ppivote(self, r)
-            while p in columnaOcupada:
+            while p in colExcluida:
                 p = ppivote(self, p)
             return p
         celim = lambda x: x < p
         A = ElimG(data);
-        r = 0;  transformaciones = [];  columnaOcupada = set()
+        r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -1056,11 +1083,11 @@ class ElimGJ(Matrix):
                                               for j in filter(celim, range(1,A.n+1)) ] )
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(p)
+                colExcluida.add(p)
                 
         transElimIzda = transformaciones
 
-        r = 0;  transformaciones = [];  columnaOcupada = set()
+        r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -1068,7 +1095,7 @@ class ElimGJ(Matrix):
                 Tr = T([ (Fraction(1, i|A|p), p) ])
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(p)
+                colExcluida.add(p)
                 
         pasos = [ [], A.pasos[1] + transElimIzda  + [T(transformaciones)] ]
         def tex(data, pasos, TexPasosPrev=[]):
@@ -1077,7 +1104,7 @@ class ElimGJ(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1098,7 +1125,7 @@ class ElimGJ(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1122,11 +1149,11 @@ class Elimr(Matrix):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
             p = ppivote(self, r)
-            while p in columnaOcupada:
+            while p in colExcluida:
                 p = ppivote(self, p)
             return p
         celim = lambda x: x > p
-        A = Matrix(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
+        A = Matrix(data);  r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -1134,7 +1161,7 @@ class Elimr(Matrix):
                 Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(celim, range(1,A.n+1))])
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(p)
+                colExcluida.add(p)
         pasos = [[], transformaciones]
         def tex(data, pasos, TexPasosPrev=[]):
             def PasosYEscritura(data, pasos, TexPasosPrev=[]):
@@ -1142,7 +1169,7 @@ class Elimr(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1163,7 +1190,7 @@ class Elimr(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1187,10 +1214,10 @@ class ElimrG(Matrix):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
             p = ppivote(self, r)
-            while p in columnaOcupada:
+            while p in colExcluida:
                 p = ppivote(self, p)
             return p
-        A = Elimr(data);  r = 0;  transformaciones = [];  columnaOcupada = set()
+        A = Elimr(data);  r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -1198,7 +1225,7 @@ class ElimrG(Matrix):
                 Tr = T([ {p, r} ])
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(r)
+                colExcluida.add(r)
         pasos = [ [], A.pasos[1]+[T(transformaciones)] ]
         def tex(data, pasos, TexPasosPrev=[]):
             def PasosYEscritura(data, pasos, TexPasosPrev=[]):
@@ -1206,7 +1233,7 @@ class ElimrG(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1227,7 +1254,7 @@ class ElimrG(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1251,12 +1278,12 @@ class ElimrGJ(Matrix):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
             p = ppivote(self, r)
-            while p in columnaOcupada:
+            while p in colExcluida:
                 p = ppivote(self, p)
             return p
         celim = lambda x: x < p
         A = ElimrG(data);
-        r = 0;  transformaciones = [];  columnaOcupada = set()
+        r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -1264,9 +1291,9 @@ class ElimrGJ(Matrix):
                 Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(celim, range(1,A.n+1))])
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(p)                
+                colExcluida.add(p)                
         transElimIzda = transformaciones
-        r = 0;  transformaciones = [];  columnaOcupada = set()
+        r = 0;  transformaciones = [];  colExcluida = set()
         for i in range(1,A.m+1):
             p = BuscaNuevoPivote(i|A); 
             if p:
@@ -1274,7 +1301,7 @@ class ElimrGJ(Matrix):
                 Tr = T([ (Fraction(1, i|A|p), p) ])
                 transformaciones += [Tr]  if Tr.t else []
                 A & T( Tr )
-                columnaOcupada.add(p)                
+                colExcluida.add(p)                
         pasos = [ [], A.pasos[1] + transElimIzda  + [T(transformaciones)] ]
         def tex(data, pasos, TexPasosPrev=[]):
             def PasosYEscritura(data, pasos, TexPasosPrev=[]):
@@ -1282,7 +1309,7 @@ class ElimrGJ(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1303,7 +1330,7 @@ class ElimrGJ(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1331,7 +1358,7 @@ class ElimF(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1352,7 +1379,7 @@ class ElimF(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1380,7 +1407,7 @@ class ElimGF(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1401,7 +1428,7 @@ class ElimGF(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1430,7 +1457,7 @@ class ElimGJF(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1451,7 +1478,7 @@ class ElimGJF(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1472,7 +1499,7 @@ def representa_eliminacion(self, pasos, TexPasosPrev=[], rep=1):
             A   = Matrix(data);  p   = [[],[]]
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                             for i in range(0,len(pasos[l])) ]
@@ -1493,7 +1520,7 @@ def representa_eliminacion(self, pasos, TexPasosPrev=[], rep=1):
                                      tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
             return tex
         tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-        if rep:  
+        if 'rep' in locals() and rep:
             from IPython.display import display, Math
             display(Math(tex))
         return tex
@@ -1508,7 +1535,7 @@ class InvMat(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1529,7 +1556,7 @@ class InvMat(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1553,7 +1580,7 @@ class InvMatF(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1574,7 +1601,7 @@ class InvMatF(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1597,7 +1624,7 @@ class InvMatFC(Matrix):
             A   = Matrix(data);  p   = [[],[]]
             tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
             for l in range(0,2):
-                p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                     or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                     or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                             for i in range(0,len(pasos[l])) ]
@@ -1623,7 +1650,7 @@ class InvMatFC(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -1644,7 +1671,7 @@ class InvMatFC(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -1760,10 +1787,10 @@ class Sistema:
         """
         if isinstance(i,int):
             return self.lista[i-1]
-
+            
         elif isinstance(i, (list,tuple) ):
             return Sistema ([ (self|a) for a in i ])
-        
+            
     def __mul__(self,x):
         """Multiplica un Sistema por un  Vector o una Matrix a su derecha
 
@@ -1811,17 +1838,18 @@ class Sistema:
         >>>  S & T([{1,3},(5,1),(5,2,1)])# Aplica la secuencia de transformac.
                      # sobre los elementos de S y en el orden de la lista
         """
+        index = lambda x: ( (x-1) % len(self) ) + 1 
         if isinstance(t.t,set):
-            self.lista = Sistema([(self|max(t.t)) if k==min(t.t) else \
-                                  (self|min(t.t)) if k==max(t.t) else \
+            self.lista = Sistema([(self|max(t.t)) if k==index(min(t.t)) else \
+                                  (self|min(t.t)) if k==index(max(t.t)) else \
                                   (self|k) for k in range(1,len(self)+1)] ).lista.copy()
 
         elif isinstance(t.t,tuple) and (len(t.t) == 2):
-            self.lista = Sistema([ t.t[0]*(self|k) if k==t.t[1] else  \
+            self.lista = Sistema([ t.t[0]*(self|k) if k==index(t.t[1]) else  \
                                   (self|k) for k in range(1,len(self)+1)] ).lista.copy()
 
         elif isinstance(t.t,tuple) and (len(t.t) == 3):
-            self.lista = Sistema([ t.t[0]*(self|t.t[1]) + (self|k) if k==t.t[2] else \
+            self.lista = Sistema([ t.t[0]*(self|t.t[1]) + (self|k) if k==index(t.t[2]) else \
                                   (self|k) for k in range(1,len(self)+1)] ).lista.copy()
         elif isinstance(t.t,list):
             for k in t.t:          
@@ -1865,7 +1893,7 @@ class SubEspacio:
         if isinstance(data, Matrix):
             A          = data
             self.sgen  = SGenENulo(A)  
-            self.dim   = 0 if self.sgen.lista[0].esNulo() else len(self.sgen)
+            self.dim   = 0 if self.sgen.lista[0].es_nulo() else len(self.sgen)
             self.base  = self.sgen if self.dim else Sistema([])
             self.cart  = ~Matrix(SGenENulo(~Matrix(self.sgen)))
             self.Rn    = A.n
@@ -1873,9 +1901,9 @@ class SubEspacio:
         """Indica si este SubEspacio está contenido en other"""
         self.verificacion(other)
         if isinstance(other, SubEspacio):
-            return all ([ (other.cart*v).esNulo() for v in self.sgen ])
+            return all ([ (other.cart*v).es_nulo() for v in self.sgen ])
         elif isinstance(other, EAfin):
-            return other.v.esNulo() and self.contenido_en(other.S)
+            return other.v.es_nulo() and self.contenido_en(other.S)
         else:
             raise ValueError('other debe ser un SubEspacio o un EAfin')
 
@@ -2052,7 +2080,7 @@ class Homogenea:
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -2073,7 +2101,7 @@ class Homogenea:
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -2081,7 +2109,7 @@ class Homogenea:
         A     = Matrix(data)
         L     = Elim( A )  
         E     = I(A.n) & T(L.pasos[1])
-        base  = [Vector(E|j) for j in range(1, L.n+1) if Vector(L|j).esNulo()]
+        base  = [Vector(E|j) for j in range(1, L.n+1) if Vector(L|j).es_nulo()]
         dim   = len(base)
         
         self.sgen        = Sistema(base) if dim else Sistema([V0(A.n)])
@@ -2120,7 +2148,7 @@ class SEL:
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -2141,28 +2169,28 @@ class SEL:
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex        
         A  = Matrix(A)
-        MA = A if b.esNulo() else Matrix( BlockMatrix([ [A, Matrix([-b])] ]) )
+        MA = A if b.es_nulo() else Matrix( BlockMatrix([ [A, Matrix([-b])] ]) )
         BM = Matrix( BlockMatrix([ [MA], [I(MA.n)] ]) )
         filasA = list(range(1,A.m+1))
         filasE = columnasE = list(range(1,A.n+1))
         
         LA = Elim ( MA )
         
-        if not b.esNulo() and not (filasA|LA|0).esNulo():
+        if b.no_es_nulo() and (filasA|LA|0).no_es_nulo():
             self.tex = tex( {A.m, A.m+A.n} | BM | {A.n}, LA.pasos )
             raise ArithmeticError('No hay solución: Sistema incompatible')
         EA        = I(MA.n) & T(LA.pasos[1])
-        Normaliza = T([])    if b.esNulo() else T([(Fraction(1,0|EA|0),MA.n)])
+        Normaliza = T([])    if b.es_nulo() else T([(Fraction(1,0|EA|0),MA.n)])
         EA        = EA & Normaliza
-        self.solP = V0(MA.n) if b.esNulo() else filasE|EA|0
+        self.solP = V0(MA.n) if b.es_nulo() else filasE|EA|0
 
         E                = filasE| EA |columnasE
-        base             = [ (E|j) for j in columnasE if (filasA|LA|j).esNulo()]
+        base             = [ (E|j) for j in columnasE if (filasA|LA|j).es_nulo()]
         self.determinado = (len(base) == 0)
         self.sgen        = Sistema([V0(A.n)]) if self.determinado else Sistema(base)
         self.eafin       = EAfin(self.sgen,self.solP)
@@ -2207,7 +2235,7 @@ class SELS:
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -2228,28 +2256,28 @@ class SELS:
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
         A  = Matrix(A)      
-        MA = A if b.esNulo() else Matrix( BlockMatrix([ [A, Matrix([-b])] ]) )
+        MA = A if b.es_nulo() else Matrix( BlockMatrix([ [A, Matrix([-b])] ]) )
         BM = Matrix( BlockMatrix([ [MA], [I(MA.n)] ]) )
         filasA = list(range(1,A.m+1))
         filasE = columnasE = list(range(1,A.n+1))
         
         LA = Elim ( BM )
         
-        if not b.esNulo() and not (filasA|LA|0).esNulo():
+        if b.no_es_nulo() and (filasA|LA|0).no_es_nulo():
             self.tex = tex( {A.m, A.m+A.n} | BM | {A.n}, LA.pasos )
             raise ArithmeticError('No hay solución: Sistema incompatible')
         EA        = I(MA.n) & T(LA.pasos[1])
-        Normaliza = T([])    if b.esNulo() else T([(Fraction(1,0|EA|0),MA.n)])
+        Normaliza = T([])    if b.es_nulo() else T([(Fraction(1,0|EA|0),MA.n)])
         EA        = EA & Normaliza
-        self.solP = V0(MA.n) if b.esNulo() else filasE|EA|0
+        self.solP = V0(MA.n) if b.es_nulo() else filasE|EA|0
 
         E                = filasE| EA |columnasE
-        base             = [ (E|j) for j in columnasE if (filasA|LA|j).esNulo()]
+        base             = [ (E|j) for j in columnasE if (filasA|LA|j).es_nulo()]
         self.determinado = (len(base) == 0)
         self.sgen        = Sistema([V0(A.n)]) if self.determinado else Sistema(base)
         self.eafin       = EAfin(self.sgen,self.solP)
@@ -2294,7 +2322,7 @@ class SELGJ:
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -2315,28 +2343,28 @@ class SELGJ:
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
         A  = Matrix(A)      
-        MA = A if b.esNulo() else Matrix( BlockMatrix([ [A, Matrix([-b])] ]) )
+        MA = A if b.es_nulo() else Matrix( BlockMatrix([ [A, Matrix([-b])] ]) )
         BM = Matrix( BlockMatrix([ [MA], [I(MA.n)] ]) )
         filasA = list(range(1,A.m+1))
         filasE = columnasE = list(range(1,A.n+1))
                 
         LA = ElimGJ ( MA )
         
-        if not b.esNulo() and not (filasA|LA|0).esNulo():
+        if b.no_es_nulo() and (filasA|LA|0).no_es_nulo():
             self.tex = tex( {A.m, A.m+A.n} | BM | {A.n}, LA.pasos )
             raise ArithmeticError('No hay solución: Sistema incompatible')            
         EA        = I(MA.n) & T(LA.pasos[1])
-        Normaliza = T([])    if b.esNulo() else T([(Fraction(1,0|EA|0),MA.n)])
+        Normaliza = T([])    if b.es_nulo() else T([(Fraction(1,0|EA|0),MA.n)])
         EA        = EA & Normaliza
-        self.solP = V0(MA.n) if b.esNulo() else filasE|EA|0
+        self.solP = V0(MA.n) if b.es_nulo() else filasE|EA|0
 
         E                = filasE| EA |columnasE
-        base             = [ (E|j) for j in columnasE if (filasA|LA|j).esNulo()]
+        base             = [ (E|j) for j in columnasE if (filasA|LA|j).es_nulo()]
         self.determinado = (len(base) == 0)
         self.sgen        = Sistema([V0(A.n)]) if self.determinado else Sistema(base)
         self.eafin       = EAfin(self.sgen,self.solP)
@@ -2384,7 +2412,7 @@ class Diagonaliza(Matrix):
                 A   = Matrix(data);  p   = [[],[]]
                 tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
                 for l in range(0,2):
-                    p[l] = [ T([j for j in pasos[l][i].t if (isinstance(j,set) and len(j)>1)   \
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
                                         or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
                                         or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
                                                                 for i in range(0,len(pasos[l])) ]
@@ -2405,7 +2433,7 @@ class Diagonaliza(Matrix):
                                          tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
                 return tex
             tex     = PasosYEscritura(data, pasos, TexPasosPrev)
-            if rep:  
+            if 'rep' in locals() and rep:
                 from IPython.display import display, Math
                 display(Math(tex))
             return tex
@@ -2413,7 +2441,7 @@ class Diagonaliza(Matrix):
             ppivote = lambda v, k=0:\
                       ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
             p = ppivote(self, r)
-            while p in columnaOcupada:
+            while p in colExcluida:
                 p = ppivote(self, p)
             return p
         D            = Matrix(A)
@@ -2422,7 +2450,6 @@ class Diagonaliza(Matrix):
         Tex          = latex( BlockMatrix( [[D], [S]] ) )
         pasosPrevios = [[],[]]
         selecc       = list(range(1,D.n+1))
-        rep=0
         for l in espectro:
             m = selecc[-1]
             D = D-(l*I(D.n))
@@ -2443,7 +2470,7 @@ class Diagonaliza(Matrix):
             D = T(pasos[0]) & D
 
             if m < A.n:
-                transf = []; columnaOcupada = set(selecc)
+                transf = []; colExcluida = set(selecc)
                 for i in range(m,A.n+1):
                     p = BuscaNuevoPivote(i|D);
                     if p:
@@ -2461,7 +2488,7 @@ class Diagonaliza(Matrix):
                         Tex = tex( BlockMatrix( [[D], [S]] ), pasos, Tex)
                         D = T(pasos[0]) & D
 
-                        columnaOcupada.add(p)                        
+                        colExcluida.add(p)                        
             D = D+(l*I(D.n))
             Tex += '\\xrightarrow[' + latex(l) + '\\mathbf{I}]{(+)}' \
                                     + latex(BlockMatrix( [[D], [S]] ))
@@ -2478,27 +2505,244 @@ class Diagonaliza(Matrix):
         self.S   = S
         super(self.__class__ ,self).__init__(D.sis)
                    
-class Normal(Matrix):
-    def __init__(self, data):
-        """Escalona por Gauss obteniendo una matriz cuyos pivotes son unos"""
-        pivote=lambda v,k=0:([i for i,c in enumerate(v.sis,1)if(c!=0 and i>k)]+[0])[0]
-        
-        A = Matrix(data); r = 0
-        self.rank = []
-        for i in range(1,A.n+1):
-            p = pivote((i|A),r)
-            if p > 0:
-                r += 1
-                A & T( {p, r} )
-                A & T( (1/Fraction(i|A|r), r) )
-                A & T( [ (-(i|A|k), r, k) for k in range(r+1,A.n+1)] )
+class DiagonalizaOrtogonalmente(Matrix):
+    def __init__(self, A, espectro, Rep=0):
+        ## Falta texto de ayuda
+        def ext(self):
+            M = Matrix(BlockMatrix([ [self, I(self.m)] ])).GS()
+            l = [j for j in range(1,M.n+1) if (M|j).no_es_nulo()]
+            l = l[1:len(l)]+[l[0]]
+            return (M|l).normalizada()
 
-            self.rank+=[r]
-              
-        super(self.__class__ ,self).__init__(A.sis)        
-def homogenea(A):
-     """Devuelve una BlockMatriz con la solución del problema homogéneo"""
-     stack=Matrix(BlockMatrix([[A],[I(A.n)]]))
-     soluc=Normal(stack)
-     col=soluc.rank[A.m-1]
-     return {A.m} | soluc | {col}
+        D =Matrix(A)
+        if ~D != D:
+            raise ValueError('La matriz no es simétrica')                    
+        S        = I(A.n)
+        espectro = list(espectro);
+        selecc   = list(range(1,D.n+1))
+        for l in espectro:
+            D = D - l*I(D.n)
+            TrCol = ElimG(selecc|D|selecc).pasos[1]
+            D = D + l*I(D.n)
+            k       = len(selecc)
+            nmenosk = (D.n)-k
+            selecc.pop()
+
+            q = ( I(k) & T(TrCol) )|0
+            q = Fraction((q*q)**(-1/2.0)) * q
+            Q = Matrix(BlockMatrix([ \
+                 [ext(Matrix([q])), M0(k, nmenosk)], \
+                 [  M0(nmenosk, k),     I(nmenosk)]  ] )) if nmenosk \
+                 else ext(Matrix([q]))
+            S = S *Q     
+            D = (Q**-1)*D*Q
+            
+        self.Q = S
+        espectro.sort(reverse=True)                
+        self.espectro = espectro
+        super(self.__class__ ,self).__init__(D.sis)
+                   
+class DiagonalizaC(Matrix):
+    def __init__(self, data, Rep=0):
+        ## falta texto de ayuda para la clase [[DiagonalizaC]]>>
+        def tex(data, pasos, TexPasosPrev=[]):
+            def PasosYEscritura(data, pasos, TexPasosPrev=[]):
+                """Escribe en LaTeX los pasos efectivos dados"""
+                A   = Matrix(data);  p   = [[],[]]
+                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+                for l in range(0,2):
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
+                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                                for i in range(0,len(pasos[l])) ]
+                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                    if l==0:
+                        for i in reversed(range(0,len(p[l]))):
+                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( p[l][i] & A )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                    if l==1:
+                        for i in range(0,len(p[l])):
+                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( A & p[l][i] )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+                return tex
+            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
+            if 'rep' in locals() and rep:
+                from IPython.display import display, Math
+                display(Math(tex))
+            return tex
+        def BuscaNuevoPivote(self, r=0):
+            ppivote = lambda v, k=0:\
+                      ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
+            p = ppivote(self, r)
+            while p in colExcluida:
+                p = ppivote(self, p)
+            return p
+        A     = Matrix(data);      colExcluida  = set()
+        celim = lambda x: x > p;   pasosPrevios = [ [], [] ]
+        Tex   = latex(A);   
+        for i in range(1,A.n):
+            p = BuscaNuevoPivote(i|A)
+            j = [k for k in list(range(i,A.n+1)) if ( i|A|k and not k|A|k )]
+            if not (i|A|i):
+                if j:
+                    Tr = T( (1, j[0], i) )
+                    p = i
+                    pasos = [ [], [Tr] ]
+                    pasosPrevios[1] = pasosPrevios[1] + pasos[1]
+                    Tex = tex( A, pasos, Tex)
+                    A = A & T(pasos[1])
+
+                    pasos = [ [~Tr] , []]
+                    pasosPrevios[0] = pasos[0] + pasosPrevios[0]
+                    Tex = tex( A, pasos, Tex)
+                    A = T(pasos[0]) & A
+                elif p:
+                    Tr = T( {i, p} )
+                    p = i
+                    pasos = [ [], [Tr] ]
+                    pasosPrevios[1] = pasosPrevios[1] + pasos[1]
+                    Tex = tex( A, pasos, Tex)
+                    A = A & T(pasos[1])
+
+                    pasos = [ [~Tr] , []]
+                    pasosPrevios[0] = pasos[0] + pasosPrevios[0]
+                    Tex = tex( A, pasos, Tex)
+                    A = T(pasos[0]) & A
+            if p:
+                Tr = T( [ T( [ ( Fraction((i|A|j),(i|A|p)).denominator,   j) ,    \
+                               (-Fraction((i|A|j),(i|A|p)).numerator,  p, j)  ] ) \
+                                              for j in filter(celim, range(1,A.n+1)) ] )
+                pasos = [ [], [Tr] ]
+                pasosPrevios[1] = pasosPrevios[1] + pasos[1]
+                Tex = tex( A, pasos, Tex)
+                A = A & T(pasos[1])
+
+                pasos = [ [~Tr] , []]
+                pasosPrevios[0] = pasos[0] + pasosPrevios[0]
+                Tex = tex( A, pasos, Tex)
+                A = T(pasos[0]) & A
+            colExcluida.add(i)
+            
+        self.tex       = Tex
+        self.pasos     = pasosPrevios
+        self.B         = I(A.n) & T(pasosPrevios[1])
+        self.positivos = sum([1 for c in A.diag().sis if c>0 ] )
+        self.negativos = sum([1 for c in A.diag().sis if c<0 ] )
+        self.nulos     = sum([1 for c in A.diag().sis if c==0] )
+        
+        if Rep:
+            from IPython.display import display, Math
+            display(Math(Tex))
+            print('Num de autovalores positivos: ' + str(self.positivos) + '\n')
+            print('Num de autovalores nulos:     ' + str(self.nulos)     + '\n')
+            print('Num de autovalores negativos: ' + str(self.negativos) + '\n')
+            
+        super(self.__class__ ,self).__init__(A.sis)
+                   
+class DiagonalizaCr(Matrix):
+    def __init__(self, data, Rep=0):
+        ## falta texto de ayuda para la clase [[DiagonalizaC]]>>
+        def tex(data, pasos, TexPasosPrev=[]):
+            def PasosYEscritura(data, pasos, TexPasosPrev=[]):
+                """Escribe en LaTeX los pasos efectivos dados"""
+                A   = Matrix(data);  p   = [[],[]]
+                tex = latex(data) if len(TexPasosPrev)==0 else TexPasosPrev
+                for l in range(0,2):
+                    p[l] = [T([j for j in T([pasos[l][i]]).t if (isinstance(j,set) and len(j)>1) \
+                                        or (isinstance(j,tuple) and len(j)==3 and j[0]!=0)     \
+                                        or (isinstance(j,tuple) and len(j)==2 and j[0]!=1) ])  \
+                                                                for i in range(0,len(pasos[l])) ]
+                    p[l]   = [ t for t in p[l] if len(t.t)!=0]  # quitamos abreviaturas vacías     
+                    if l==0:
+                        for i in reversed(range(0,len(p[l]))):
+                            tex += '\\xrightarrow[' + latex(p[l][i]) + ']{}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( p[l][i] & A )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(p[l][i] & A)|key(data.ln) )
+                    if l==1:
+                        for i in range(0,len(p[l])):
+                            tex += '\\xrightarrow{' + latex(p[l][i]) + '}'
+                            if isinstance (data, Matrix):
+                                         tex += latex( A & p[l][i] )
+                            elif isinstance (data, BlockMatrix):
+                                         tex += latex( key(data.lm)|(A & p[l][i])|key(data.ln) )
+                return tex
+            tex     = PasosYEscritura(data, pasos, TexPasosPrev)
+            if 'rep' in locals() and rep:
+                from IPython.display import display, Math
+                display(Math(tex))
+            return tex
+        def BuscaNuevoPivote(self, r=0):
+            ppivote = lambda v, k=0:\
+                      ( [i for i,c in enumerate(v.sis, 1) if (c!=0 and i>k)] + [0] )[0]
+            p = ppivote(self, r)
+            while p in colExcluida:
+                p = ppivote(self, p)
+            return p
+        A     = Matrix(data);      colExcluida  = set()
+        celim = lambda x: x > p;   pasosPrevios = [ [], [] ]
+        Tex   = latex(A);   
+        for i in range(1,A.n):
+            p = BuscaNuevoPivote(i|A)
+            j = [k for k in list(range(i,A.n+1)) if ( i|A|k and not k|A|k )]
+            if not (i|A|i):
+                if j:
+                    Tr = T( (1, j[0], i) )
+                    p = i
+                    pasos = [ [], [Tr] ]
+                    pasosPrevios[1] = pasosPrevios[1] + pasos[1]
+                    Tex = tex( A, pasos, Tex)
+                    A = A & T(pasos[1])
+
+                    pasos = [ [~Tr] , []]
+                    pasosPrevios[0] = pasos[0] + pasosPrevios[0]
+                    Tex = tex( A, pasos, Tex)
+                    A = T(pasos[0]) & A
+                elif p:
+                    Tr = T( {i, p} )
+                    p = i
+                    pasos = [ [], [Tr] ]
+                    pasosPrevios[1] = pasosPrevios[1] + pasos[1]
+                    Tex = tex( A, pasos, Tex)
+                    A = A & T(pasos[1])
+
+                    pasos = [ [~Tr] , []]
+                    pasosPrevios[0] = pasos[0] + pasosPrevios[0]
+                    Tex = tex( A, pasos, Tex)
+                    A = T(pasos[0]) & A
+            if p:
+                Tr = T([(-Fraction(i|A|j, i|A|p), p, j) for j in filter(celim, range(1,A.n+1))])
+                pasos = [ [], [Tr] ]
+                pasosPrevios[1] = pasosPrevios[1] + pasos[1]
+                Tex = tex( A, pasos, Tex)
+                A = A & T(pasos[1])
+
+                pasos = [ [~Tr] , []]
+                pasosPrevios[0] = pasos[0] + pasosPrevios[0]
+                Tex = tex( A, pasos, Tex)
+                A = T(pasos[0]) & A
+            colExcluida.add(i)
+            
+        self.tex       = Tex
+        self.pasos     = pasosPrevios
+        self.B         = I(A.n) & T(pasosPrevios[1])
+        self.positivos = sum([1 for c in A.diag().sis if c>0 ] )
+        self.negativos = sum([1 for c in A.diag().sis if c<0 ] )
+        self.nulos     = sum([1 for c in A.diag().sis if c==0] )
+        
+        if Rep:
+            from IPython.display import display, Math
+            display(Math(Tex))
+            print('Num de autovalores positivos: ' + str(self.positivos) + '\n')
+            print('Num de autovalores nulos:     ' + str(self.nulos)     + '\n')
+            print('Num de autovalores negativos: ' + str(self.negativos) + '\n')
+            
+        super(self.__class__ ,self).__init__(A.sis)
+        
